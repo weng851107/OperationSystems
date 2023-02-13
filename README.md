@@ -319,6 +319,130 @@ Modern Operating Systems
 
 <h3 id="1.2.2">Computer-System Organization</h3>
 
+- One or more CPUs, device controllers connect through *common bus* providing access to *shared memory*
+
+- Goal： *Concurrent* execution of CPUs and devices competing for memory cycles
+
+    ![img20](./image/NTHU_OS/img20.PNG)
+
+Computer-System Operations
+
+- Each device controller is in charge of a particular device type
+- Each device controller has a local buffer. 
+    --> I/O device 運作相對於CPU太慢，若沒有buffer，CPU會一直在idle
+    --> Status reg: 設置相關設定
+    --> Data reg: 先儲存資料，再放入buffer
+- *I/O is from the device to controller's local buffer*
+- *CPU moves data* from/to *memory* to/from *local buffers* in device controllers
+- Device 與 Memory 之間會有一個 Device Controller 作為傳輸的橋樑，Device Controller的好壞會影響到I/O的速度，CPU會下指令操作Device Controller的register，進而操作到Device
+
+    ![img21](./image/NTHU_OS/img21.PNG)
+
+---
+
+Busy/wait output
+
+- Simplest way to program device
+  - Use instruction to test when device is ready
+  - 每次寫入都去 `peek` 寫入字元動作是否已完成再繼續寫下一個字元
+  - 此方式來讀寫I/O device會造成一直霸佔CPU，無法實現 "Overlaps the I/O and computation of jobs"，因此要使用 `interrupt I/O` 的方式
+
+    ![img22](./image/NTHU_OS/img22.PNG)
+
+Interrupt I/O
+
+- Busy/wait is very inefficient
+  - CPU can't do other work while testing device
+  - Hard to do simultaneous I/O
+- *Interrupts* allow a device to *change the flow of control in the CPU*
+  - Causes subroutine call to handle device
+
+Interrupt I/O Timeline
+
+- Interrupt time line for I/O on a single process
+  - `CPU = high`：CPU原本在處理目前的 user process executing
+  - `I/O device = high`：idle
+  - I/O device拉low，傳遞資料到buffer中，完成後會拉high，進而對CPU產生中斷
+
+    ![img23](./image/NTHU_OS/img23.PNG)
+
+Interrupt-Driven I/O
+
+- 初始化I/O後，當Controller準備好時會發出interrupt，CPU才需處理相關事務，處理完後CPU會再返回目前行程
+- 軟體的interrupt通常為主動產生，而硬體的interrupt為被動產生 
+
+    ![img24](./image/NTHU_OS/img24.PNG)
+
+Interrupt
+
+- *Modern OS are interrupt driven*
+- The occurrence of an event is signaled by an interrupt from either hardwrae or software
+  - *Hardware* may trigger an interrupt at any time by sending a *signal* to CPU
+    - signal是專門用於硬體中斷使用的詞語
+  - *Software* may trigger an interrupt either by 
+    - an *error*(division by zero or invalid memory access) --> 非預期(被動?)
+    - or by a user request for an *operating system service* (*system call*) --> 預期的(主動?)
+    - Software interrupt also called *trap*
+
+HW Interrupt
+
+- CPU原先在執行 user program，但hardware device被觸發產生一個interrupt signal(CPU被動被中斷)
+- 接著CPU會去 `interrupt vector` 中搜索該signal相對應(硬體設計出來的，某個硬體插到某個Port，會有對應的signal number(由硬體設計固定的))的function pointer
+- function pointer會引導到所要執行的function code去作處理
+- 執行對應siganl的function code又稱為 `Service Routine`
+- OS執行完後會返回CPU原先執行的 user program
+
+    ![img25](./image/NTHU_OS/img25.PNG)
+
+SW Interrupt
+
+- CPU原先在執行某一個program，主動產生一個 `system call` 來中斷CPU
+- 由於SW Interrupt的數量是unbounded的，不採用和HW Interrupt一個由interrup vector來處理，而是使用 `switch case` 的方式來設計，流程上與HW Interrup是相似的，只是實現方式不同
+
+    ![img26](./image/NTHU_OS/img26.PNG)
+
+Common Functions of Interrupts
+
+- Interrupt transfers control to the interrupt service routine generally, through the *interrupt vector*, which contains the *addresses* (function pointer) of all the *service (i.e. interrupt handler) routunes*
+- Interrupt architecture must save the *address* of the *interrupted instruction*
+- Incoming interrupts are *disabled* while another interrupt is being processed to prevent a lost interrupt 
+    --> 確保OS為低延遲
+    --> 有時候中斷沒有反應是因為發生中斷時卡在某個service routine中，所以其它中斷會被disable
+
+---
+
+Storage-Device Hierarchy
+
+- Storage systems organized in hierarchy
+  - *Speed*, Cost, Volatility
+  - 越上層速度越快，但容量較低
+- Main memory - only large storage media that the CPU can access directly
+  - RAM: Random Access Memory
+- Secondary storage - extension of main memory that provides `large nonvolatile storage` capacity
+  - Magnetic disk
+
+    ![img27](./image/NTHU_OS/img27.PNG)
+
+RAM: Random-Access Memory --> Access speed (訪問速度) 每次都保持一致
+
+- DRAM(Dynamic RAM)：
+  - Need only *one transistor*
+  - Consume *less power*
+  - Values must be periodically *refreshed*
+  - Access Speed: *>= 30ns*
+- SRAM(Static RAM)：
+  - Need only *six transistor*
+  - Consume *more power*
+  - Access Speed: *10ns ~ 30ns*
+  - Usage: *cache memory*
+
+Disk Mechanism
+
+- Speed of magnetic disk
+  - $Transfer time = data size / transfer rate$
+  - Positioning time = seek time(cylinder) + rotational latency(sector)  -->  random access time，訪問時間是隨機的，因為是由機構來完成的
+
+
 
 
 <h3 id="1.2.3">Hardware Protection</h3>
