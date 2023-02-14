@@ -440,7 +440,29 @@ Disk Mechanism
 
 - Speed of magnetic disk
   - $Transfer time = data size / transfer rate$
-  - Positioning time = seek time(cylinder) + rotational latency(sector)  -->  random access time，訪問時間是隨機的，因為是由機構來完成的
+  - Positioning time = seek time(cylinder) + rotational latency(sector)  
+  -->  random access time，訪問時間是隨機的，因為是由機構來完成的
+  -->  當今天是連續讀取的時候時，HDD不一定會輸給SSD
+
+Performance of Various Levels of Storage
+
+![img28](./image/NTHU_OS/img28.PNG)
+
+Caching
+
+- Information in use *copied* from *slower* to *faster* storage temporarily
+- Faster storage (cache) checked first to determine if information is there
+  - If it is, <u>information used directly from the cache (fast)</u>
+  - If not, <u>data copied to cache and used there</u>
+
+    ![img29](./image/NTHU_OS/img29.PNG)
+
+- 並不是總是需要cache，當今天讀取的資料過多，讀取一次就佔滿，就沒有讀取到cache的意義了
+- cache只是複製常用數據，避免過度重memory取得，用來加速
+
+Coherency(連貫性) and Consistency(一致性) Issue 
+
+
 
 
 
