@@ -16,6 +16,7 @@ If there is related infringement or violation of related regulations, please con
     - [What is an Operating System](#1.2.1)
     - [Computer-System Organization](#1.2.2)
     - [Hardware Protection](#1.2.3)
+  - [Chapter2: OS Structure](#1.3)
 
 
 <h1 id="0">Note</h1>
@@ -462,11 +463,96 @@ Caching
 
 Coherency(連貫性) and Consistency(一致性) Issue 
 
+- The same data may appear in different levels
+  - Issue: <u>Change the *copy in register* make it inconsistent with other copies</u>
+  - 有時候register或cache的值已經修改了，但Ram或是disk上尚未更新
+- Single task accessing:
+  - No problem, always use the *Highest level* cpoy
+  - 由於單一程序且CPU總是存取最高等級的記憶體，所以不影響
+- Muti-task accessing:
+  - Need to obtain the most recent value
+  - 當多個程序有共享記憶體時，沒有即時更新到時，會有錯誤的數據
 
+    ![img30](./image/NTHU_OS/img30.PNG)
 
-
-
+- Distributed system:
+  - Difficult because copies are on different computers
+  - Ex. Google雲端系統如此龐大，為何還是可以使用 --> 放棄Coherency，對不同使用者看到的網頁有可能都不完全一致，但對使用上沒有影響
 
 <h3 id="1.2.3">Hardware Protection</h3>
+
+- 非指 Security
+- 一個作業系統有很多層，共用某資源但卻不會影響到對方，如某程序死掉，並不會造成其他程序死掉
+- 不能不透過作業系統就訪問其他程序正在執行程序的記憶體
+- CPU只是吃指令去執行，如何分辨誰是OS誰是User Program
+  - 但程式在執行時，利用interrupt來進行區分，達到 Dual-Mode Operation
+
+> *Dual-Mode Operation*
+> I/O Protection
+> Memory Protection
+> CPU Protection
+
+**Dual-Mode Operation**
+
+- What to protect?
+  - Sharing system resources requires OS to ensoure that an incorrect program cannot cause *other programs* to execute incorrectly.
+- Provide <font color='red'>hardware support</font> to differentiate between at least two modes of operations
+  1. <font color='red'>User mode</font> - execution done on behalf pf a user
+  2. <font color='red'>Monitor mode</font> (also <font color='red'>kernel mode</font> or <font color='red'>system mode</font>) - execution done on behalf of <font color='red'>operation system</font>
+- <font color='red'>*Mode bit*</font> added to computer hardware to indicate the current mode
+  - kernel mode = 0
+  - user mode = 1
+- When an <font color='red'>interrupt/trap</font> or <font color='red'>fault</font> occurs, hardware switches to monitor mode
+
+    ![img31](./image/NTHU_OS/img31.PNG)
+
+- <font color='red'>Privileged instructions</font> 
+  - Executed only in <font color='red'>monitor mode</font> 
+  - Requested by users (system calls)
+  - 電腦上運作做任何事情時，都必須透過給CPU instruction
+  - 在設計CPU的指令集時已經寫死了
+  - 根據是否會危害到電腦運作來區分是否為Privileged instructions
+
+**I/O Protection**
+
+- <font color='red'>All I/O instructions are privileged instructions</font> 
+  - any I/O device is shared between users
+- Must ensure that a user program could never gain control of the computer in monitor mode (i.e. a user program that, as part of its execution, stores a new address(a new user code) in the interrupt vector)
+  - 駭客無法繞過OS，因此只能鑽記憶體的漏洞
+
+    ![img32](./image/NTHU_OS/img32.PNG)
+
+**Memory Protection**
+
+- Protect
+  - Interrupt vector and the interrupt service routines
+  - <u>Data access and over-write from other programs</u>
+- HW support: two registers for legal address determination
+  - <font color='red'>Base register</font> - holds the smallest legal physical memory address
+  - <font color='red'>Limit register</font> - contains the size of the range
+  - 修改指令為 privileged instruction
+
+    ![img33](./image/NTHU_OS/img33.PNG)
+
+- Memory outside the defined range is protected
+
+    ![img34](./image/NTHU_OS/img34.PNG)
+
+**CPU Protection**
+
+- Prevent user program from not returning control
+  - getting stuck in an infinite loop
+  - not calling system services
+- HW support: <font color='red'>Timer</font> - interrupts computer after specified period
+  - Timer is decremented every clock tick
+  - When timer reaches the value 0, an interrupt occurs
+  - CPU的scheduler會決定CPU的schedule
+- Timer commonly used to implement <font color='red'>time sharing</font>
+- <font color='red'>Load-timer</font> is a privileged instruction
+
+<h2 id="1.3">Chapter2: OS Structure</h2>
+
+<h3 id="1.3.1">What is an Operating System</h3>
+
 
 
