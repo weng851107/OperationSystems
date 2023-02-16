@@ -17,6 +17,10 @@ If there is related infringement or violation of related regulations, please con
     - [Computer-System Organization](#1.2.2)
     - [Hardware Protection](#1.2.3)
   - [Chapter2: OS Structure](#1.3)
+    - [Nachos Explanation](#1.3.1)
+    - [OS Service](#1.3.2)
+    - [OS Application Interface](#1.3.3)
+    - [OS System Structure](#1.3.4)
 
 
 <h1 id="0">Note</h1>
@@ -552,7 +556,283 @@ Coherency(連貫性) and Consistency(一致性) Issue
 
 <h2 id="1.3">Chapter2: OS Structure</h2>
 
-<h3 id="1.3.1">What is an Operating System</h3>
+<h3 id="1.3.1">Nachos Explanation</h3>
+
+https://homes.cs.washington.edu/~tom/nachos/
+
+Introduction
+
+- understand how to work on Linux machine
+- understand how system call are done by OS
+- understand the difference of user space and kernel space memory
+
+NachOS
+
+- a process runs on top of another OS
+- a kernel(OS) and MIPS code machine simulator
+
+    ![img35](./image/NTHU_OS/img35.PNG)
+
+- Virtual Machine的作用就是instruction的轉換
+
+Nacho Directory Structure
+
+- `lib/`
+  - Utilities used by the rest of the Nachos code
+- `machine/`
+  - The <font color='red'>machine simulation</font>
+  - 修改Hardware相關設定，如增加一個signal
+- `threads/`
+  - Nachos is a multi-threaded program. Thread support is found here.
+  - This directory also contains the main() routine of the nachos program, in `main.cc`
+- `test/`
+  - <font color='red'>User test programs</font> to run on the simulated machine.
+  - As indicated earlier, these are separate from the source for the Nachos operating system and workstation simulation.
+  - This directory contains its own Makefile.
+  - The test programs are very simple and are written in C rather than C++
+- `userprog/`
+  - <font color='red'>Nachos operating system code</font> to support the creation of address spaces, loading of user (test) programs, and execution of test programs on the simulated machine. The exception handling code is here, in `exception.cc`
+- `network/`
+  - Nachos operating system support for networking, which implements a simple "post office" facility.
+  - Several independent simulated Nachos machines can talk to each other through a simulated network.
+  - Unix sockets are used to <font color='red'>simulate network connections among the machines</font>
+- `filesys/`
+  - Two different file system implementations are here.
+  - <font color='red'>The "real" file system</font> uses the simulated workstation's simulated disk to hold files.
+  - <font color='red'>A "stub" file system</font> translates Nachos file system calls into UNIX file system calls makefile.
+
+Installation of Nachos
+
+- Install
+
+    ```bash
+    #download NachOS-4.0_MP1
+
+    $ cd NachOS-4.0_MP1/code/build.linux
+
+    $ make clean
+
+    $ make
+    ```
+
+- Rebuild
+  - You should <font color='red'>rebuild NachOS</font> every time after you modify anything in NachOS, otherwise you won't change the execution results.
+
+    ```bash
+    $ cd NachOS-4.0_MP1/code/build.linux
+
+    $ make clean
+
+    $ make
+    ```
+
+- Test your nachos
+  - 須透過 `nachos -e` 來執行 user program
+
+    ```bash
+    $ cd NachOS-4.0_MP1/code/test
+
+    $ make clean
+
+    $ make halt
+
+    $ ../build.linux/nachos -e halt
+    ```
+
+    ![img36](./image/NTHU_OS/img36.PNG)
+
+- Test nachos with test cases
+
+    ```bash
+    # this will generate the binary of all test cases
+    $ make
+
+    # generate test case
+    $ make consoleIO_test1
+
+    # run nachos with test case
+    $ ../build.linux/nachos -e consoleIO_test1
+    ```
+
+MP - System call
+
+- Part1: console I/O system call
+  - Implement `PrintInt(int number)` system call
+
+    ![img37](./image/NTHU_OS/img37.PNG)
+
+    ![img39](./image/NTHU_OS/img39.PNG)
+
+    ![img43](./image/NTHU_OS/img43.PNG)
+
+- Part2: File I/O system call
+  - 新增 `Open(), Close()`
+
+    ![img38](./image/NTHU_OS/img38.PNG)
+
+    ![img40](./image/NTHU_OS/img40.PNG)
+
+    ![img41](./image/NTHU_OS/img41.PNG)
+
+    ![img42](./image/NTHU_OS/img42.PNG)
+
+    ![img44](./image/NTHU_OS/img44.PNG)
+
+<h3 id="1.3.2">OS Service</h3>
+
+User program 透過OS使用system call
+
+interrupt routine = service routine
+
+![img45](./image/NTHU_OS/img45.PNG)
+
+**User Interface**
+
+- CLI (Command Line Interface)
+  - Fetches a command from user and executes it
+  - <font color='red'>Shell: Command-line interpreter</font> (CSHELL, BASH, ...)
+    - Adjusted according to user behavior and preference
+    - 使用者透過Shell這個程序下指令給OS
+- GUI (Graphic User Interface)
+  - Usually mouse, keyboard, and monitor
+  - Icons represent files, programs, actions, etc
+  - Various mouse buttons over objects in the interface cause various actions
+- Most systems have both <font color='red'>CLI</font> and <font color='red'>GUI</font>
+
+**Communication Models**
+
+- Communication may take place using either <font color='red'>message passing</font>(with systemcall(OS) because "Protect") or <font color='red'>share memory</font>(with systemcall(OS) to create memory because "Protect").
+
+    ![img46](./image/NTHU_OS/img46.PNG)
+
+- Multi-thread programming時，會OS會有預設創建共同擁有的記憶體空間
+
+<h3 id="1.3.3">OS Application Interface</h3>
+
+> System calls
+> API
+
+- System calls 與 API 的差別
+
+**System Calls**
+
+- Request OS services
+  - <font color='red'>Process control</font> - abort, create, terminate process and allocate/free memory
+  - <font color='red'>File management</font> - create, delete, open, close file
+  - <font color='red'>Device management</font> - read, write, reposition device
+  - <font color='red'>Information maintenance</font> - get time or date
+  - <font color='red'>Communications</font> - send receive message
+
+**System Calls & API**
+
+![img47](./image/NTHU_OS/img47.PNG)
+
+- System calls
+  - The <font color='red'>OS interface</font> to a running program
+  - An explicit request to the <font color='red'>kernel</font> made via a <font color='red'>software interrupt</font>
+  - Generally available as <font color='red'>assembly-language</font> instructions
+
+- API: Application Program Interface
+  - <font color='red'>Users mostly program against API instead of system call</font>
+  - 為了方便撰寫程式所建立的一層，而不會直接接觸到System call
+  - Commonly implemented by language libraries, e.g. <font color='red'>C Library</font>
+  - An API call could involve <font color='red'>zero or multiple system call</font>
+    - Both `malloc()` and `free()` use system call `brk()`
+    - Math CPI function, such as `abs()`, don't need to incolve system call
+
+Interface vs. Library
+
+- User program:
+
+    ```C
+    printf("%d", exp2(int x, int y));
+    ```
+
+- Interface:
+
+    ```C
+    int exp2(int x, int y);
+    ```
+    i.e. return the value of $X*2^{y}$
+
+- Library:
+
+  - imp1
+
+    ```C
+    int exp2(int x, int y)
+    {
+        for (int i = 0;i < y;i++) {
+            x = x*2;
+        }
+        return x;
+    }
+    ```
+
+  - imp2
+
+    ```C
+    int exp2(int x, int y)
+    {
+        x = x<<y;
+        return x;
+    }
+    ```
+
+  - imp3: hardware device 支援的 instruction
+
+    ```C
+    int exp2(int x, int y)
+    {
+        return HW_EXP(x, y);
+    }
+    ```
+
+API: Application Program Interface
+
+- Three most common APIs:
+  - <font color='red'>Win32</font> API for <font color='red'>Windows</font>
+  - <font color='red'>POSIX API</font> for POSIX-based systems (including virtually all versions of UNIX, Linux, and Mac OS X)
+    - POSIX -> "Portable Operating System Interface for Unix"
+    - Ex. pthread: 前面的p表示由POSIX建立的API
+  - <font color='red'>Java API</font> for the Java virtual machine
+    - 需要從vitual machine轉換code到x86 machine
+
+API - System Call - OS Relationship
+
+- user program 在執行時會先呼叫API，會根據API內需不需要OS的幫助來看是否呼叫System Call，才會進入OS進行其他操作
+
+    ![img48](./image/NTHU_OS/img48.PNG)
+
+Standard C Library Example
+
+![img49](./image/NTHU_OS/img49.PNG)
+
+Why use API?
+
+- Simplicity
+  - API is designed for applications
+- Portability
+  - API is an unified defined interface
+- Efficiency
+  - Not all functions require OS services or involve kernel
+
+System Calls: Passing Parameters
+
+- Three general methods are used to pass parameters between a running program and the operating system
+  - Pass parameters in <font color='red'>registers</font> --> 直接存放到暫存器，CPU就可以讀取到 
+  - Store the parameters in a <font color='red'>table in memory</font>, and the table address is passed as a parameter in a register --> 利用 pointer
+  - Push(store) the parameters onto the <font color='red'>stack</font> by the program, and pop off the stack by operating system --> 每個process都會有stack空間可以存放
+
+<h3 id="1.3.4">OS System Structure</h3>
+
+> Simple OS Architecture
+> Layer OS Architecture
+> Microkernel OS
+> Modular OS Structure
+> Virtual Machine
+> Java Virtual Machine
+
 
 
 
