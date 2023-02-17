@@ -21,6 +21,11 @@ If there is related infringement or violation of related regulations, please con
     - [OS Service](#1.3.2)
     - [OS Application Interface](#1.3.3)
     - [OS System Structure](#1.3.4)
+  - [Chapter3: Processes Concept](#1.4)
+    - [Process Concept](#1.4.1)
+    - [Process Scheduling](#1.4.2)
+    - [Operations on Processes](#1.4.3)
+    - [Interprocess Communication](#1.4.4)
 
 
 <h1 id="0">Note</h1>
@@ -560,6 +565,8 @@ Coherency(連貫性) and Consistency(一致性) Issue
 
 https://homes.cs.washington.edu/~tom/nachos/
 
+[[作業系統] Nachos 安裝](https://jeffprogrammer.wordpress.com/2016/10/31/%E4%BD%9C%E6%A5%AD%E7%B3%BB%E7%B5%B1-nachos-%E7%B0%A1%E4%BB%8B/)
+
 Introduction
 
 - understand how to work on Linux machine
@@ -833,6 +840,106 @@ System Calls: Passing Parameters
 > Virtual Machine
 > Java Virtual Machine
 
+User goals and System goals
+
+- User goals - operating system should be <font color='red'>easy to use</font> and <font color='red'>learn</font>, as well as <font color='red'>reliable</font>, <font color='red'>safe</font>, and <font color='red'>fast</font>
+
+- System goals - operating system should be <font color='red'>easy to design, implement</font> and <font color='red'>maintain</font>, as well as <font color='red'>reliable</font>, <font color='red'>error-free</font>, and <font color='red'>efficient</font>
+
+**Simple OS Architecture**
+
+![img50](./image/NTHU_OS/img50.PNG)
+
+**Layered OS Architecture**
+
+![img51](./image/NTHU_OS/img51.PNG)
+
+**Microkernel OS**
+
+- Kernel module負責為各個sub-system作溝通 --> 有module的概念
+- 將非必須module的實現於user space
+- 效率更慢，溝通(message passing)都需要經過kernel
+
+![img52](./image/NTHU_OS/img52.PNG)
+
+**Modular OS Structure**
+
+- 當今使用的OS，如Linux
+
+- sub-system以module的形式存在，且都在kernel space中
+
+- 可以insert/remove module
+
+![img53](./image/NTHU_OS/img53.PNG)
+
+- https://courses.linuxchix.org/kernel-hacking-2002.html
+- https://en.wikibooks.org/wiki/The_Linux_Kernel/Modules
+
+**Virtual Machine**
+
+![img54](./image/NTHU_OS/img54.PNG)
+
+- virtual machine中的kernel是建立在原先OS上的user space，因此virtual machine中的kernel若執行privileged instructions(產生interrupt)，會跳出一個exception，回到原先OS，原先OS再幫virtual machine執行一次privileged instructions
+
+    ![img55](./image/NTHU_OS/img55.PNG)
+
+- CPU若有hardware support，則除了可以分辨是kernel space或是user space之外，還能分辨是否為virtual machine spcae
+
+- critical instruction: 在user space與kernel space都可以執行，但在不同的space執行的結果不一樣
+  - 因此如果沒有hardware支持virtual machine的話，在virtual machine中的user space或是kernel space執行的critical instruction對原先OS來說都是在user space執行的，因次結果可能會錯誤
+
+Usage of Virtual Machine
+
+- Provides complete protection of system resources
+- A means to solve system compatibility problems，如某軟體只能執行於Ubuntu14.04...
+- A perfect vehicle for operatin-systems reseach and development
+- A mean to increase resources utilization in <font color='red'>cloud computing</font>
+  - cloud computing 也有其他實現方式
+
+Vmware (Full Virtualization)
+
+- Guest Operation System 完全不需要修改
+- 且不需要靠到Hardware的幫忙
+
+    ![img56](./image/NTHU_OS/img56.PNG)
+
+Parallel-virtualization: Xen
+
+![img57](./image/NTHU_OS/img57.PNG)
+
+**Java Virtual Machine**
+
+- 注重於code translation
+- 使用的記憶體於Java Virtual Machine中，並不會影響到Host System
+
+![img58](./image/NTHU_OS/img58.PNG)
+
+<h2 id="1.4">Chapter3: Processes Concept</h2>
+
+<h3 id="1.4.1">Process Concept</h3>
+
+- An operating system concurrently executes a variety of programs(e.g Web browser, text editor, etc)
+  - Program - passive entity:<font color='red'>binary stored in disk</font>
+  - Process - active entity: <font color='red'>a program in execution in memory</font>
+- A process includes：
+  - <font color='red'>Code</font> segment(text section)
+  - <font color='red'>Data section</font> - global variables
+  - <font color='red'>Stack</font> - temporary local variables and functions
+  - <font color='red'>Heap</font> - dynamic allocated variables or classes
+  - Current activity(<font color='red'>program counter</font>, register contents)
+  - A set of associated <font color='red'>resources</font>(e.g. open file handlers)
 
 
+
+<h3 id="1.4.2">Process Scheduling</h3>
+
+
+
+
+<h3 id="1.4.3">Operations on Processes</h3>
+
+
+
+
+<h3 id="1.4.4">Interprocess Communication</h3>
 
