@@ -25,7 +25,14 @@ If there is related infringement or violation of related regulations, please con
     - [Process Concept](#1.4.1)
     - [Process Scheduling](#1.4.2)
     - [Operations on Processes](#1.4.3)
-    - [Interprocess Communication](#1.4.4)
+    - [Interprocess Communication (IPC)](#1.4.4)
+  - [Chapter8: Memory Management](#1.5)
+    - [Background](#1.5.1)
+    - [Swapping](#1.5.2)
+    - [Contiguous Allocation](#1.5.3)
+    - [Paging](#1.5.4)
+    - [Segmentation](#1.5.5)
+    - [Segmentation with Paging](#1.5.6)
 
 
 <h1 id="0">Note</h1>
@@ -918,28 +925,372 @@ Parallel-virtualization: Xen
 
 <h3 id="1.4.1">Process Concept</h3>
 
-- An operating system concurrently executes a variety of programs(e.g Web browser, text editor, etc)
-  - Program - passive entity:<font color='red'>binary stored in disk</font>
-  - Process - active entity: <font color='red'>a program in execution in memory</font>
-- A process includes：
-  - <font color='red'>Code</font> segment(text section)
-  - <font color='red'>Data section</font> - global variables
-  - <font color='red'>Stack</font> - temporary local variables and functions
-  - <font color='red'>Heap</font> - dynamic allocated variables or classes
-  - Current activity(<font color='red'>program counter</font>, register contents)
-  - A set of associated <font color='red'>resources</font>(e.g. open file handlers)
+An operating system concurrently executes a variety of programs(e.g Web browser, text editor, etc)
+- *Program* - passive entity:<font color='red'>binary stored in disk</font>
+- *Process* - active entity: <font color='red'>a program in execution in memory</font>
 
+A process includes：
 
+- <font color='red'>Code</font> segment(text section)
+- <font color='red'>Data section</font> - global variables
+- <font color='red'>Stack</font> - temporary local variables and functions
+- <font color='red'>Heap</font> - dynamic allocated variables or classes
+- Current activity(<font color='red'>program counter</font>, register contents)
+- A set of associated <font color='red'>resources</font>(e.g. open file handlers)
+
+Process in Memory
+
+![img59](./image/NTHU_OS/img59.PNG)
+
+Threads
+
+- a.k.a <font color='red'>lightweight process</font>
+  - basic unit of CPU utilization
+- All threads <font color='red'>belonging to the same process</font> share
+  - <font color='red'>code</font>  section, <font color='red'>data</font>  section and <font color='red'>OS resources</font>  (e.g. open files and signals)
+- But each thread has its own
+  - <font color='red'>thread ID</font>, <font color='red'>program counter</font>, <font color='red'>register set</font>, and a <font color='red'>stack</font>
+- 不同的threads可以利用全域變數來進行溝通
+
+  ![img60](./image/NTHU_OS/img60.PNG)
+
+Process(Thread) State：
+
+- 以Linux來說，OS並沒有Process的概念，把大家都當作Thread，只是區分哪些Threads有共用的Memory
+
+- States：
+  - <font color='red'>New</font>: the precess is being created --> 載入到Memory中
+  - <font color='red'>Ready</font>: the process is in the memory waiting to be assigned to a processor --> process在等待競爭CPU core的資源，排程
+  - <font color='red'>Runnung</font>: instructions are being executed by CPU --> 可以送instruction給CPU進行運算
+  - <font color='red'>Waiting</font>: the process is waiting for events to occur --> 等待I/O處理完事件
+  - <font color='red'>Terminated</font>: the process has finished execution --> 把佔用的資源釋放掉
+
+Diagram of Process State
+
+- Only one process is <font color='red'>running</font> on any processor at any instant
+- However, many process may be <font color='red'>ready</font> or <font color='red'>waiting</font>
+
+    ![img61](./image/NTHU_OS/img61.PNG)
+
+Process Control Block (PBC)
+
+- 當一個Process被創建時，會建立其PCB
+- Information associated with each process --> 存於OS的Memory裡面，其Kernel的Memory
+  - <font color='red'>Process state</font>
+  - <font color='red'>Program counter</font>
+  - <font color='red'>CPU registers</font>
+  - CPU scheduling information (e.g. priority)
+  - Memory-management information (e.g. base/limit register)
+  - Accounting information
+
+  ![img62](./image/NTHU_OS/img62.PNG)
+
+**Context Switch**: 
+
+- 將原本在CPU上執行的Process轉換成另一個時的專有名詞
+- 系統倚靠這個行為來共享CPU的資源
+- <font color='red'>Context Switch</font>: Kernel saves the state of the old process and loads the saved state for the new process
+- Context-switch time is purely <font color='red'>overhead</font>
+- Switch time (about 1~1000ms) depends on
+  - memory speed
+  - number of registers
+  - existence of special instructions
+    - a single intruction to save/load all registers
+  - hardware support
+    - <font color='red'>multiple sets of register</font> (Sun UltraSPARC - a context switch means changing register file pointer)
+
+  ![img63](./image/NTHU_OS/img63.PNG)
 
 <h3 id="1.4.2">Process Scheduling</h3>
 
+Process Scheduling
 
+- *Multiprogramming*： CPU runs process at all times to <font color='red'>maximize CPU utilization</font>
+- *Time sharing*： switch CPU frequently such that <font color='red'>users</font> can <font color='red'>interact</font> with each program while it is running
+- Processes will have to wait until the CPU is free and can be re-shceduled
 
+Process Scheduling Queues
+
+- Processes migrate between the various queues (i.e. switch among states)
+- *Job queue* (New State) - set of <font color='red'>all processes</font> in the system
+- *Ready queue* (Ready State) - set of all processes residing in main memory, <font color='red'>ready and waiting to execute</font>
+- *Device queue* (Wait State) - set of processes <font color='red'>waiting for an I/O device</font>
+
+  ![img64](./image/NTHU_OS/img64.PNG)
+
+Process Scheduling Diagram
+
+![img65](./image/NTHU_OS/img65.PNG)
+
+Schedulers
+
+![img66](./image/NTHU_OS/img66.PNG)
+
+- *Short-term* scheduler (<font color='red'>CPU scheduler</font>) - selects which process should be executed and <font color='red'>allocated CPU (Ready state -> Run state)</font>
+- *Long-term* scheduler (<font color='red'>Job scheduler</font>) - selects which processes should be <font color='red'>loaded into memory</font> and brought into the ready queue <font color='red'>(New state -> Ready state)</font>
+- *Medium-term* scheduler - selects which processes should be <font color='red'>swapped in/out memory (Ready state -> Wait state)</font>
+  - 與virtual memory相似，因為memory有限，所以將部分disk作為memory來使用
+  - 一個process的base/limit register可以很大，但並不是立即使用到，因此可以將部分未使用到的轉換到disk建構的memory
+
+Long-Term Scheduler
+
+- Control <font color='red'>degree of multiprogramming</font> --> 即控制目前有多少個程序在記憶體中
+- Execute less frequently (e.g. invoked only when a process leaves the system or <font color='red'>once several minutes</font>) -> 造成CPU idle
+- Select a <font color='red'>good mix of CPU-bound & I/O-bound </font>processes to increase system overall performance -> CPU 和 I/O device 有被平衡地使用，不會造成誰被idle
+- UNIX/NT: no long-term scheduler
+  - 記憶體足夠大，Process會直接放至記憶體，搭配medium-term scheduler
+  - Created process placed in memory for short-term scheduler
+  - Multiprogramming degree is bounded by hardware limitation (e.g., # of terminals) or on the self-adjusting nature of users
+
+Short-Term Scheduler
+
+- Execute quite frequently (e.g. <font color='red'>once per 100ms</font>)
+- Must be efficient:
+  - if 10ms for picking a job, 100ms for such a pick,
+    -> $overhead = 10/110 = 9%$，表示CPU有9%的時間是沒有在做事的，re-schedule的時間
+
+  ![img67](./image/NTHU_OS/img67.PNG)
+
+Medium-Term Scheduler
+
+- <font color='red'>swap out</font>: *removing processes from memory* to reduce the degree of multiprogramming
+- <font color='red'>swap in</font>: reintroducing swap-out processes into memory
+- Purpose: <u>improve process mix, free up memory</u>
+- Most modern OS doesn't have medium-term scheduler because having sufficient physical memory or using virtual memory
+
+    ![img68](./image/NTHU_OS/img68.PNG)
 
 <h3 id="1.4.3">Operations on Processes</h3>
 
+Tree of Processes
+
+- Each process is identified by a <font color='red'>unique</font> processor identifier (<font color='red'>pid</font>)
+  - 有parent-child的關係
+
+  ![img69](./image/NTHU_OS/img69.PNG)
+
+Process Creation
+
+- Resource sharing
+  - Parent and child processes share <font color='red'>all</font> resources
+  - Child process shares <font color='red'>subset</font> of parent's resources
+  - Parent and child share <font color='red'>no</font> resources
+
+- Two possibilities of execution
+  - Parent and children <font color='red'>execute concurrently</font>
+  - Parent <font color='red'>waits until children terminate</font>
+
+- Two possibilities of address space
+  - <font color='red'>Child duplicate of parent</font>, communication via sharing variables
+  - <font color='red'>Child has a program loaded into it</font>, communication via message passing
+
+UNIX/Linux Process Creation
+
+- <font color='red'>fork</font> system call
+  - Create a new (child) process
+  - The new process <font color='red'>duplicates the address space</font> of its parent
+  - Child & Parent <font color='red'>execute concurrently</font> after fork
+  - Child: return value of fork is 0
+  - Parent: return value of fork is PID of the child process
+- <font color='red'>execlp</font> system call
+  - <font color='red'>Load a new binary file</font> (即另一個程式的程式碼) into memory - <font color='red'>destorying the old code</font>
+- <font color='red'>wait</font> system call
+  - The parent waits for <font color='red'>one of its child processes</font> to complete
+
+- Memory space of fork()：
+  - Old implementation: A's child is an <font color='red'>exact copy</font> of parent
+  - Current implementation: use <font color='red'>copy-on-write</font> technique to store <font color='red'>differences in A's child address space</font>
+
+  ![img70](./image/NTHU_OS/img70.PNG)
+
+UNIX/Linux Example
+
+![img71](./image/NTHU_OS/img71.PNG)
+
+![img72](./image/NTHU_OS/img72.PNG)
+
+Process Termination
+
+- Terminate when the last statement is executed or <font color='red'>exit()</font> is called
+  - All resources of the process, including physical & virtual memory, open files, I/O buffers, are <font color='red'>deallocated by the OS</font>
+- Parent may terminate execution of children processes by specifying its PID (<font color='red'>abort</font>)
+  - Child has exceeded allocated resources
+  - Task assigned to child is no longer required
+- Cascading termination:
+  - killing (exiting) parent -> killing (exiting) all its children
+
+<h3 id="1.4.4">Interprocess Communication (IPC)</h3>
+
+Interprocess Communication
+
+- <font color='red'>IPC</font>：a set of methods for the exchange of data among multiple threads in one or more processes
+- <font color='red'>Independent process</font>：cannot affect or be affected by other processes
+- <font color='red'>Cooperating process</font>：otherwise
+- Purposes
+  - information sharing
+  - computation speedup (not always true ...)
+  - convenience (performs several tasks at one time)
+  - modularity
+
+Communication Methods
+
+- *Shared memory*：
+  - Require more careful <font color='red'>user synchronization</font>
+  - Implemented by memory access：faster speed
+  - <font color='red'>Use memory address to access data</font>, (使用pointer的方式)
+  - 通常用於人數少時
+- *Message passing*：
+  - No conflict：<font color='red'>more efficient for small data</font>
+  - <font color='red'>Use send/recv message</font>
+  - Implemented by <font color='red'>system call</font>：slower speed
+  - 通常用於人數多時，如網路
+
+  ![img73](./image/NTHU_OS/img73.PNG)
+
+- Sockets：
+  - A network connection identified by <font color='red'>IP & Port</font>, (Port就是Process，不同的Port代表不同的Process)
+  - Exchange <font color='red'>unstructured stream of bytes</font>
+
+  ![img74](./image/NTHU_OS/img74.PNG)
+
+- Remote Procedure Calls：
+  - Cause a <font color='red'>procedure</font> to execute in another address space
+  - Pareameters and return values are passed by message
+  - 即可以呼叫別個process的function code
+
+  ![img75](./image/NTHU_OS/img75.PNG)
+
+Shared Memory
+
+- Processes are responsible for ...
+  - Establishing a region of shared memory
+    - Typically, a shared-memory region resides in the address space of the process creating the shared-memory segment
+    - Participating processes <font color='red'>must agree to remove memory access constraint</font> from OS
+  - Deteninating the form of the data and the location (OS只幫忙創建此區塊，裡面內容要什麼是由user program來決定)
+  - Ensuring data are not written simutaneously by processes
+
+Consumer & Producer Problem
+
+- <font color='red'>Producer</font> process produces information that is consumed by a <font color='red'>Consumer</font> process
+
+- Buffer as a circular array with size B
+  - next free: <font color='red'>in</font>
+  - first available: <font color='red'>out</font>
+  - empty: <font color='red'>in = out</font>
+  - full: <font color='red'>(in+1)%B = out</font> --> 事先停住，會有一個儲存空間被浪費掉，否則不知道 $in = out$ 時，是什麼情況
+
+  ![img76](./image/NTHU_OS/img76.PNG)
+
+  ![img77](./image/NTHU_OS/img77.PNG)
+
+ - Consumer & Producer 在compiler與linker時也是被使用的，如source code直接被編譯成execution file時，即compiler編譯後就給linker
+
+Message-Passing System
+
+- Mechanism for processes to <font color='red'>communicate</font> and <font color='red'>synchronize</font> their actions --> 不必再額外對同步作其他處理，本身就是一種同步的溝通
+- IPC facility provide two operations：
+  - <font color='red'>Send</font>(message) - message size fixed or vaiable
+  - <font color='red'>Receive</font>(message)
+- Message system - processes communicate <font color='red'>without resorting to shared variables</font> --> 無須共享變數(記憶體)
+- To communicate, processes need to
+  - Establish a <font color='red'>communication link</font>
+  - Exchange a message via <font color='red'>send/receive</font>
+- Implementation of communication link
+  - physical (e.g. shared memory, HW bus, or network)
+  - logical (e.g. <font color='red'>logical properties</font>)
+    - <font color='red'>Direct or indirect communication</font>
+    - Symmetric or asymmetric communication
+    - <font color='red'>Blocking or non-blocking</font>
+    - Automatic or expicit buffering
+    - Send by copy or send by reference
+    - Fixed-sized or variable-sized messages
+
+Direct communication (如打電話?)
+
+- Processes must <font color='red'>name each other explicitly</font>
+  - *Send(P, message)* - send a message to process P
+  - *Receive(Q, message)* - receive a message from process Q
+- Properties of communication link
+  - Links are <font color='red'>established automatically</font>
+  - <font color='red'>One-to-One</font> relationship between links and processes
+  - The link may be unidirectional, but is usually bi-directional
+
+  ![img78](./image/NTHU_OS/img78.PNG)
+
+  - <font color='red'>limited modularity</font>：if the <font color='red'>name</font> of a process is <font color='red'>changed</font>, all old names should be found
+
+Indirect communication (如寄信?)
+
+- Messages are directed and received from <font color='red'>mailboxes</font> (also referred to as ports)
+  - <font color='red'>Each mailbox has a unique ID</font>
+  - Processes can communicate if they share a mailbox
+  - *Send(A, message)* - send a message to mailbox A
+  - *Receive(A, message)* - receive a message from mailbox A
+- Properties of communication link
+  - Link established only <font color='red'>if processes share a common mailbox</font>
+  - <font color='red'>Many-to-Many</font> relationship between links and processes
+  - Link may be unidirectional or bi-directional
+  - Mailbox can be owned either by OS or processes
+- Mailbox sharing
+
+    ![img79](./image/NTHU_OS/img79.PNG)
+
+- Solutions
+  - Allow a link to be associated with at most two --> 即direct communication
+  - Allow only one process at a time to execute a receive operation --> 透過locking來解決
+  - <font color='red'>Allow the system to select arbitrarily a single receiver. Sender is notified who the receiver was</font>
+
+Synchronization
+
+- Message passing may be either <font color='red'>blocking</font>(synchronous) or <font color='red'>non-blocking</font>(asynchronous)
+  - *Blocking send*: sender is blocked until the message is receive by receiver or by the mailbox
+  - *Nonblocking send*: sender sends the message and resumes operation
+  - *Blocking receive*: receiver is blocked until the message is available
+  - *Nonblocking receive*: receiver receives a valid message or a null
+- Buffer implementation
+  - <font color='red'>Zero</font> capacity: blocking send/receive
+  - <font color='red'>Bounded</font> capacity: if full, sender will be blocked
+  - <font color='red'>Unbounded</font> capacity: sender never blocks
+
+  ![img80](./image/NTHU_OS/img80.PNG)
+
+Sockets
+
+- connect後，會創建新的thread，多個連線即多個thread在執行，因此不互相影響
+
+  ![img81](./image/NTHU_OS/img81.PNG)
+
+  ![img82](./image/NTHU_OS/img82.PNG)
+
+Remote Procedure Calls
+
+![img83](./image/NTHU_OS/img83.PNG)
+
+![img84](./image/NTHU_OS/img84.PNG)
+
+<h2 id="1.5">Chapter8: Memory Management</h2>
+
+<h3 id="1.5.1">Background</h3>
+
+
+<h3 id="1.5.2">Swapping</h3>
+
+
+<h3 id="1.5.3">Contiguous Allocation</h3>
 
 
 
-<h3 id="1.4.4">Interprocess Communication</h3>
+<h3 id="1.5.4">Paging</h3>
+
+
+
+<h3 id="1.5.5">Segmentation</h3>
+
+
+
+<h3 id="1.5.6">Segmentation with Paging</h3>
+
+
+
+
 
