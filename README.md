@@ -1344,9 +1344,32 @@ Logical vs. Physical Address
 - <font color='red'>The user program deals with logical address; it never sees the real physical address</font>
   - 即每個Process只需關注自己的address即可，不必在意其他Processes
 
+Dynamic Loading
 
+- The entire program must be in memory for it to execute? --> Static Loading
+- No, we can use <font color='red'>dynamic-loading</font>
+  - *A routine(function code) is loaded into memory when it is called*
+- <font color='red'>Better memory-space utilization</font>
+  - unused routine(function code) is never loaded
+  - Particularly useful when large amounts of code are infrequently used (e.g., *error handling code*)
+- <font color='red'>No special support from OS</font> is required implemented through program (library, API calls)
 
+Dynamic Loading Example in C
 
+- `dlopen()`: opens a library and prepares it for use
+- `desym()`: looks up the value of a symbol in a given (opened) library
+- `dlclose()`: closes a DL library
+- 當printf()中實際呼叫到 `cosine` 時才會dynamic load到記憶體中
+
+    ![img90](./image/NTHU_OS/img90.PNG)
+
+    ![img91](./image/NTHU_OS/img91.PNG)
+
+Static Linking
+
+- *Static linking*: libraries are combined by the loader into the program in-memory image
+
+....
 
 <h3 id="1.5.2">Swapping</h3>
 
