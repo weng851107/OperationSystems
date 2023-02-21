@@ -28,11 +28,13 @@ If there is related infringement or violation of related regulations, please con
     - [Interprocess Communication (IPC)](#1.4.4)
   - [Chapter8: Memory Management](#1.5)
     - [Background](#1.5.1)
-    - [Swapping](#1.5.2)
-    - [Contiguous Allocation](#1.5.3)
-    - [Paging](#1.5.4)
-    - [Segmentation](#1.5.5)
-    - [Segmentation with Paging](#1.5.6)
+    - [Address Binding](#1.5.2)
+    - [Static/Dynamic Loading and Linking](#1.5.3)
+    - [Swapping](#1.5.4)
+    - [Contiguous Allocation](#1.5.5)
+    - [Paging](#1.5.6)
+    - [Segmentation](#1.5.7)
+    - [Segmentation with Paging](#1.5.8)
 
 
 <h1 id="0">Note</h1>
@@ -1288,11 +1290,11 @@ Outline
 - How to allocate memory?
     > paging, segment
 
+<h3 id="1.5.2">Address Binding</h3>
+
 Multistep Processing of a User Program
 
 ![img85](./image/NTHU_OS/img85.PNG)
-
-**Address Binding**
 
 Address Binding in Compile Time
 
@@ -1322,6 +1324,7 @@ Address Binding in Execution(Run) Time
 - Special <font color='red'>hardware(i.e. MMU, Memory Management Unit)</font> is needed for this scheme
 - Most general-purpose OS use this method
 - 在Compile Time時，一樣只有設置limit register的數值; Load Time將Process載入Memory時，仍然只有limit register，並沒有將base register與實際載入記憶體的address一樣，等到Run Time時才會確定 --> 即CPU是使用Virtual Address去記憶體讀取，中間會被Hardware(MMU)轉換成physical address來讀取，此時才確定Process的Base register
+- 可以在run time修改程序記憶體位置，不像load time必須重新載入程序才能修改記憶體位置
 
     ![img88](./image/NTHU_OS/img88.PNG)
 
@@ -1343,6 +1346,8 @@ Logical vs. Physical Address
   - <font color='red'>logical address != physical address</font>
 - <font color='red'>The user program deals with logical address; it never sees the real physical address</font>
   - 即每個Process只需關注自己的address即可，不必在意其他Processes
+
+<h3 id="1.5.3">Static/Dynamic Loading and Linking</h3>
 
 Dynamic Loading
 
@@ -1367,26 +1372,44 @@ Dynamic Loading Example in C
 
 Static Linking
 
-- *Static linking*: libraries are combined by the loader into the program in-memory image
+- *Static linking*: libraries are combined by the <font color='red'>loader</font> into the program in-memory image
+  - Waste memory: <font color='red'>duplicated code</font>
+  - Faaster during execution time
+- <font color='red'>Static limking + Dynamic loading</font>
+    > Still can't prevent duplicated code
 
-....
+  ![img92](./image/NTHU_OS/img92.PNG)
 
-<h3 id="1.5.2">Swapping</h3>
+  ![img93](./image/NTHU_OS/img93.PNG)
+
+Dynamic Linking
+
+- *Dynamic linking*：Linking postponed <font color='red'>until execution time</font>
+  - <font color='red'>Only one code copy</font> in memory and <font color='red'>shared by everyone</font>
+  - A stub is included in the program in-memory image for each lib reference
+  - Stub call -> check if the referred lib is in memory -> if not, load the lib -> execute the lib
+  - .dll (Dynamic link library) on Windows
+  - .so (dynamically linked shared object libraries，簡稱為shared objects) on Linux
+  - 執行時，需要stub去尋找lib，因此run time時間較static linking長，但節省記憶體空間
+
+  ![img94](./image/NTHU_OS/img94.PNG)
+
+<h3 id="1.5.4">Swapping</h3>
 
 
-<h3 id="1.5.3">Contiguous Allocation</h3>
+<h3 id="1.5.5">Contiguous Allocation</h3>
 
 
 
-<h3 id="1.5.4">Paging</h3>
+<h3 id="1.5.6">Paging</h3>
 
 
 
-<h3 id="1.5.5">Segmentation</h3>
+<h3 id="1.5.7">Segmentation</h3>
 
 
 
-<h3 id="1.5.6">Segmentation with Paging</h3>
+<h3 id="1.5.8">Segmentation with Paging</h3>
 
 
 
