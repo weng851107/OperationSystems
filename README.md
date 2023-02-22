@@ -1628,8 +1628,12 @@ Shared Pages by Page Table
 Page Table Memory Structure
 
 - Page table could be huge and difficult to be loaded
-
-....
+  - 4GB ($2^{32}$) logical address space with 4KB ($2^{12}$) page
+    - 1 million ($2^{20}$) page table entry
+  - Assume each entry need 4 bytes (32bits)
+    - Total size = <font color='red'>4MB</font>
+  - <font color='red'>Need to break it into several smaller page tables, better within a single page size (i.e. 4KB)</font>
+  - <font color='red'>Or reduce the total size of page table</font>
 
 
 
