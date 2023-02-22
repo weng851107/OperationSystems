@@ -32,8 +32,8 @@ If there is related infringement or violation of related regulations, please con
     - [Static/Dynamic Loading and Linking](#1.5.3)
     - [Swapping](#1.5.4)
     - [Contiguous Allocation](#1.5.5)
-    - [Paging](#1.5.6)
-    - [Segmentation](#1.5.7)
+    - [Paging (Non-Contiguous Memory Allocation)](#1.5.6)
+    - [Segmentation (Non-Contiguous Memory Allocation)](#1.5.7)
     - [Segmentation with Paging](#1.5.8)
 
 
@@ -1396,17 +1396,246 @@ Dynamic Linking
 
 <h3 id="1.5.4">Swapping</h3>
 
+Swapping
+
+- A process can be swapped out of memory to a <font color='red'>backing store</font>(swap space), and later brought back into memory for continuous execution
+  - Also used by <font color='red'>midterm scheduling</font>, different from context switch
+- <font color='red'>Backing store</font> - a chunk of **disk**, *separated from file system*, to provide direct access to these memory images
+- Why Swap a process:
+  - *Free up memory*
+  - *Roll out, roll in*: swap lower-priority process with a higher one
+- Swap back memory location
+  - If binding is done at compile/load time
+    > swap back memory address must be the <font color='red'>same</font>
+  - If binding is done at execution time
+    > swap back memory address can be <font color='red'>different</font>
+- A process to be swapped == <font color='red'>must be idle</font> --> CPU和I/O都必須閒置時才可
+  - Imagine a process that is waiting for I/O is swapped
+  - Solution:
+    - Never swap a process with pending I/O
+    - I/O operations are done through OS buffers(i.e. a memory space not belongs tp any user processes)
+
+Process Swapping to Backing Store
+
+- Major part of swap time is transfer time; <font color='red'>total transfer time is directly proportional to the amount of memory swapped</font>
+
+    ![img95](./image/NTHU_OS/img95.PNG)
 
 <h3 id="1.5.5">Contiguous Allocation</h3>
 
+Memory Allocation
+
+- <font color='red'>Fixed-partition</font> allocation：
+  - Each process loads into one partition of fixed-size
+  - *Degree of multi-programming* is bounded by the number of partitions --> 有幾個partition代表有幾個processes
+- <font color='red'>Variable-size</font> partition
+  - Hole: block of contiguous free memory
+  - Holes of various size are scattered in memory
+
+Multiple Partition (Variable-Size) Method
+
+- When a process arrive, it is allocated a hole large enough to accommodate it
+- The OS maintains information on each <font color='red'>in-use</font> and <font color='red'>free hole</font>
+- A freed hole can be merged with another hole to form a large hole
+
+    ![img96](./image/NTHU_OS/img96.PNG)
+
+Dynamic Storage Allocation Problem
+
+- How to satisfy a request of size n from a list of free holes
+  - *First-fit* - allocate the 1st hole that fits
+  - *Best-fit* - allocate the smallest hole that fits
+  - *Worst-fit* - allocate the largest hole
+- First-fit and best-fit better than worst-fit in terms of speed and storage utilization
+
+Fragmentation (碎片化)
+
+- *External fragmentation*
+  - Total free memory space is big enough to satisfy a request, but is not contiguous
+  - Occur in <font color='red'>variable-size allocation</font>
+- *Internal fragmentation*
+  - Memory that is internal to a partition but is not being used
+  - Occur in <font color='red'>fixed-partition allocation</font>
+- Solution: *compaction*
+  - Shuffle the memory contents to place all free memory together in one large block <font color='red'>at execution time</font>
+  - Only if binding is done at execution time
+
+  ![img97](./image/NTHU_OS/img97.PNG)
+
+<h3 id="1.5.6">Paging (Non-Contiguous Memory Allocation)</h3>
+
+- Non-Contiguous Memory Allocation with Fixed-partition allocation
+
+Paging Concept
+
+- Method：
+  - Divide *physical memory* into fixed-sized blocks called <font color='red'>frames</font>
+  - Divide *logical address space* into blocks of the same size called <font color='red'>pages</font>
+  - To run a program of *n* pages, need to find *n* free frames and load the program
+  - <font color='red'>keep track of free frames</font>
+  - Set up a <font color='red'>page table</font> to translate logical to physical addresses
+- Benefit：
+  - Allow the *physical-address space* of a process to be <font color='red'>noncontiguous</font>
+  - Avoid external fragmentation
+  - Limited internal fragmentation
+  - Provide <font color='red'>shared memory/pages</font> --> 將page所存的logical address指向相同的physical address即可共用dynamically linked shared object libraries
+
+Paging Example
+
+- Page table：
+  - Each entry maps to the <font color='red'>base address of a page</font> in physical memory
+  - A structure maintained by OS <font color='red'>for each process</font>
+    - Page table includes only pages owned by a process
+    - A process cannot access memory outside its space
+
+  ![img98](./image/NTHU_OS/img98.PNG)
+
+Address Translation Scheme
+
+- Logical address is divided into two parts：
+  - <font color='red'>Page number (p)</font>
+    - used as an *index into a page table* which contains *base address of each page* in physical memory
+    - N ibts means <font color='red'>a process</font> can allocate <font color='red'>at most $2^{N}$ pages -> $2^{N}*(page size)$ memory size</font>
+  - <font color='red'>Page offset (d)</font>
+    - combined with base address to define the physical memory address that is sent to the memory unit
+    - N bits means the <font color='red'>page size is $2^{N}$</font>
+- $Address_{Physical}  = Address_{PageBase} + Offset_{page}$
+
+Address Translation Architecture
+
+- If Page size is 1KB($2^{10}$) & Page2 maps to frame5
+- Given 13 bits logical address:(p=2, d=20), what is physical address?
+  - $5*(1KB)+20=1,0100,0000,0000 + 00,0001,0100 \\ = 1,0100,0001,0100$
+
+    ![img99](./image/NTHU_OS/img99.PNG)
+
+Address Translation
+
+- Total number of pages does not need to be the same as the total number of frames
+  - Toatl #page determines the logical memory size of a process
+  - Total #frames depending on the size of physical memory
+- e.g. Given 32 bits logical address, 36 bits physical address and 4KB page size, what does it mean?
+  - #bit of logical address 沒有一定要和 #bit of physical address 一樣多，每個程序有自己的logical address，但physical address是大家一起用的
+  - Page table size: $2^{32}/2^{12} = 2^{20}$ entries
+  - Max program memory: $2^{32} = 4GB$
+  - Total physical memory size: $2^{36} = 64GB$
+  - Number of bits for page number: $2^{20}$ pages -> 20bits
+  - Number of bits for frame number: $2^{24}$ frames -> 24bits
+
+Free Frames
+
+- 一個free-frame list由OS來管理，當今天有一個process要放入記憶體執行，OS將會透過free-frame list來分配空間給process
+- 一個process要釋放資源時，也是將空間歸還給free-frame list
+
+    ![img100](./image/NTHU_OS/img100.PNG)
+
+Page / Frame Size
+
+- Page size is the <font color='red'>same</font> with frame size
+- The page (frame) size is defined by hardware
+  - <font color='red'>Typically a power of 2</font>
+  - Ranging from 512 bytes to 16MB every page
+  - <font color='red'>4KB</font> and 8KB page is commonly used
+- Larger page size -> More space waste -> Internal fragmentation
+- But <font color='red'>page size have grown over time</font>
+  - memory, process. data sets have become larger
+  - better I/O performance (during page fault)
+  - <font color='red'>page table is smaller</font>
+
+Implementation of Page Table
+
+- Page table is kept <font color='red'>in memory</font>
+- <font color='red'>Page-table base register (PTBR)</font>
+  - 為了將page-table載入MMU的暫存器，才能達成在硬體上的轉換
+  - The <font color='red'>physical memory address</font> of the page table
+  - The PTBR value is store in <font color='red'>PCB</font>(Process Control Block)
+  - *Changing the value of PTBR during* <font color='red'>Context-switch</font>
+- With PTBR, each memory reference results in <font color='red'>2 memory reads</font>
+  - One for the page table and another for the real address
+- The 2-access problem can be solved by
+  - <font color='red'>Translation Look-aside Buffers (TLB)</font> (HW) which is implemented by <font color='red'>Associative memory</font> (HW)(即cache)
+
+Associative Memory
+
+- All memory entries can be accessed at the same time
+  - parallel search (rather than random search) -> 時間複雜度O(1)
+  - Each entry corresponds to an associative register
+- But number of <font color='red'>entries are limited</font>
+  - Typical number of entries: 64 ~ 1024
+
+  ![img101](./image/NTHU_OS/img101.PNG)
+
+Translation Look-aside Buffer (TLB)
+
+- TLB為MMU的cache
+- <font color='red'>A cache for page table shared by all processes</font>
+- TLB must <font color='red'>be flushed</font> after a context switch
+  - Otherwise, TLB entry must has a PID field (address-space identifiers (ASIDs)) -> 但浪費昂貴的cache空間
+
+    ![img102](./image/NTHU_OS/img102.PNG)
+
+Effective Memory-Access Time
+
+- 20ns for TLB search
+- 100ns for memory accesss
+- Effective Memory-Access Time (EMAT)
+  - 70% TLB hit-ratio:
+
+    $
+    EMAT = 0.70*(20+100)+(1-0.7)*(20+100+100) \\ = 150ns
+    $
+
+  - 98% TLB hit-ratio
+
+    $
+    EMAT = 0.98*(20+100)+(1-0.98)*(20+100+100) \\ = 122ns
+    $
+
+Memory Protection
+
+- Each page is associated with a set of <font color='red'>protection bit</font> in the page table
+  - e.g. a bit to define read/write/execution permission
+- Common use: <font color='red'>valid-invalid bit</font>
+  - Valid: the page/frame is <font color='red'>in the process' logical address space</font>, and is thus a legal page
+  - Invalid: the page/frame is not in the process' logical address space
+
+Valid-Invalid Bit Example
+
+- Potential issues：
+  - Un-used page entry cause memory waste -> use <font color='red'>page table length register (PTLR)</font>
+    - 不必在page table中創建尚未使用的page，若訪問的地址長度大於此暫存器所存的長度值即是invalid
+    - 但仍然需要Valid-Invalid Bit，如作Swap時，會變invalid bit
+  - Process memory may NOT be on the boundary of a page -> memory limit register is still needed
+
+  ![img103](./image/NTHU_OS/img103.PNG)
+
+Shared Pages
+
+- Paging allows processes *share common code*, which must be *reentrant*(可重入性)
+- <font color='red'>Reentrant code</font> (pure code)
+  - It never change during execution
+  - text editors, compilers, web servers, etc
+- <font color='red'>Only one copy</font> of the shared code needs to be kept in physical memory
+- <font color='red'>Two (several) virtual addresses</font> are mapped to one physical address
+- Process keeps a copy of its own private data and code
+
+Shared Pages by Page Table
+
+- Shared code must appear in the same location in the logical address space of all processes
+
+    ![img104](./image/NTHU_OS/img104.PNG)
+
+Page Table Memory Structure
+
+- Page table could be huge and difficult to be loaded
+
+....
 
 
-<h3 id="1.5.6">Paging</h3>
 
+<h3 id="1.5.7">Segmentation (Non-Contiguous Memory Allocation)</h3>
 
-
-<h3 id="1.5.7">Segmentation</h3>
-
+- Non-Contiguous Memory Allocation with Variable-partition allocation
 
 
 <h3 id="1.5.8">Segmentation with Paging</h3>
