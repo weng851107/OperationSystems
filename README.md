@@ -1425,10 +1425,10 @@ Process Swapping to Backing Store
 
 Memory Allocation
 
-- <font color='red'>Fixed-partition</font> allocation：
+- <font color='red'>Fixed-size partition allocation</font>：
   - Each process loads into one partition of fixed-size
   - *Degree of multi-programming* is bounded by the number of partitions --> 有幾個partition代表有幾個processes
-- <font color='red'>Variable-size</font> partition
+- <font color='red'>Variable-size partition allocation</font>：
   - Hole: block of contiguous free memory
   - Holes of various size are scattered in memory
 
@@ -1631,18 +1631,209 @@ Page Table Memory Structure
   - 4GB ($2^{32}$) logical address space with 4KB ($2^{12}$) page
     - 1 million ($2^{20}$) page table entry
   - Assume each entry need 4 bytes (32bits)
-    - Total size = <font color='red'>4MB</font>
+    - Total size = <font color='red'>4MB</font> --> MMU 要存 4MB 連續的記憶體
   - <font color='red'>Need to break it into several smaller page tables, better within a single page size (i.e. 4KB)</font>
   - <font color='red'>Or reduce the total size of page table</font>
+- Solutions：
+  - Hierarchical Paging
+  - Hash Page Tables
+  - Inverted Page Table
 
+Hierarchical Paging
 
+- Break up the *logical address space* into <font color='red'>multiple page tables</font>
+  - Paged the page table
+  - i.e. n-level page table
+- Two-level paging (32-bit address with 4KB ($2^{12}$) page size) --> 降低單一page所需Fixed-size partition allocation的大小，不過會增加entries的數量
+  - 12-bit offset (d) -> <font color='red'>4KB ($2^{12}$) page size</font>
+  - 10-bit outer(第一層) page number -> <font color='red'>1K ($2^{10}$) page table entries</font>
+  - 10-bit inner(第二層) page number -> <font color='red'>1K ($2^{10}$) page table entries</font>
+  - <font color='red'>3 memory accesses</font> -> 訪問的時間更長了，因此TLB的功用又更重要了
+
+  ![img105](./image/NTHU_OS/img105.PNG)
+
+Two-Level Page Table Example
+
+![img106](./image/NTHU_OS/img105.PNG)
+
+Two-Level Address Translation
+
+![img107](./image/NTHU_OS/img107.PNG)
+
+64-bit Address
+
+- How about 64-bit address? (assume each entry needs 4 Bytes)
+  - 42(p1) + 10(p2) + 12(offset)
+    - outer table requires <font color='red'>$2^{42}*4Byte=16TB$ contiguous memory!!</font> 
+  - 12(p1) + 10(p2) + 10(p3) + 10(p4) + 10(p5) + 12(offset)
+    - outer table requires $2^{12}*4Byte=16KB$ contiguous memory
+    - <font color='red'>6 memory accesses</font> 
+- Examples:
+  - SPARC(32-bit) and Linux use 3-level paging
+  - Motorola 68030 (32-bit) use 4-level paging
+
+Hashed Page Table
+
+- Commonly-used for address > 32 bits
+- Virtual page number is hashed into a *hash table*
+- The size of the hash table varies -> 不必像Hierarchical Paging要將可以用的空間都建立起來，而可以只建立有使用到的page，存在自行設定的buckets
+  - Large hash table -> smaller chains in each entry
+- Each entry in the hashed table contains
+  - (Virtual Page Number, Frame Number, Next Pointer)
+  - Pointers waste memory
+  - Traverse linked list waste time & cause additional memory references
+
+  ![img108](./image/NTHU_OS/img108.PNG)
+
+Hashed Page Table Address Translation
+
+![img109](./image/NTHU_OS/img109.PNG)
+
+Improved Hashed Page Table Implementation
+
+- 避免chain的linklist是非連續記憶體，比對時會浪費太多時間，可將其用成連續的記憶體，可以一次比對，不必一直找尋
+
+    ![img110](./image/NTHU_OS/img110.PNG)
+
+Inverted Page Table
+
+- *Maintains number of page table* for each process
+- Maintains a <font color='red'>frame table</font> for the whole memory
+  - One entry for each real frame of memory
+  - 固定的大小，硬體記憶體大小
+- Each entry in the frame table has
+  - <font color='red'>(PID, Page Number)</font>
+- Eliminate the memory needed for page tables but increase memory access time
+  - Each access needs to search the whole frame table
+  - Solution: use <font color='red'>hashing</font> for the frame table
+- Hard to support <font color='red'>shared page/memory</font>
+
+Inverted Page Table Address Translation
+
+- 可以有效節省空間，但share page/memory會難以支援，因此不常使用
+
+    ![img111](./image/NTHU_OS/img111.PNG)
 
 <h3 id="1.5.7">Segmentation (Non-Contiguous Memory Allocation)</h3>
 
-- Non-Contiguous Memory Allocation with Variable-partition allocation
+- <font color='red'>Non-Contiguous Memory Allocation</font> with <font color='red'>Variable-partition allocation</font>
+- Memory-management scheme that supports <font color='red'>user view of memory</font>
+- A program is a collection of segments. A segment is a logical unit such as:
+  - main program
+  - function, object
+  - local/global variables,
+  - stack, symbol table
+  - arrays, etc...
 
+- 真實在寫program時是透過segmentation
+
+  ![img112](./image/NTHU_OS/img112.PNG)
+
+Logical View of Segmentation
+
+- External fragmentation
+
+    ![img113](./image/NTHU_OS/img113.PNG)
+
+Segmentation Table
+
+- Logical address：(seg#, offset)
+  - Offset has the SAME lemgth as physical address
+- <font color='red'>Segmentation table</font> - maps two-dimensional physical addresses; each table entry has：
+  - *Base(4 bytes)*: the start physical address
+  - *Limit(4 bytes)*: the length of the segment
+- Segment-table base register (STBR)：
+  - the <font color='red'>physical address</font> of the segmentation table
+- Segment-table length register (STLR)：
+  - the # of segments
+
+Segmentation Hardware
+
+- Limit register is used to check offset length
+- MMU allocate memory by assigning an appropriate <font color='red'>base address for each segment</font>
+  - Physical address cannot overlap between segments
+  - share memory時，會設置某個segment給多個process使用，但不同的segments是不能重疊的
+
+  ![img114](./image/NTHU_OS/img114.PNG)
+
+Address Translation Comparison
+
+- Segment
+  - Table entry: (segment base address, limt)
+  - Segment base address can be arbitrary
+  - The length of "offset" is the same as the physical memory size
+- Page
+  - Table entry: (frame base address)
+  - Frame base address = frame number * page size
+  - The length of "offset" is the same as page size
+
+Example of Segmentation
+
+![img115](./image/NTHU_OS/img115.PNG)
+
+Sharing of Segments
+
+![img116](./image/NTHU_OS/img116.PNG)
+
+Protection & Sharing
+
+- *Protection bits* associated with segments
+  - Read-only segment (code)
+  - Read-write segments (data, heap, stack)
+- Code sharing occurs at <font color='red'>segment level</font>
+  - <font color='red'>Shared memory communication</font>
+  - <font color='red'>Shared library</font>
+- Share segment by having same base in two segment tables
 
 <h3 id="1.5.8">Segmentation with Paging</h3>
+
+Basic Concept
+
+- Apply <font color='red'>segmentation</font> in <font color='red'>logical</font> address space
+- Apply <font color='red'>paging</font> in <font color='red'>physical</font> address space
+
+    ![img117](./image/NTHU_OS/img117.PNG)
+
+Address Translation
+
+- CPU generates logical address
+  - Given to <font color='red'>segmentation unit</font>
+    -> produces <font color='red'>linear addresses</font>
+  - Linear address given to <font color='red'>paging unit</font>
+    -> generates <font color='red'>physical address</font> in main memory
+- <font color='red'>Segmentation and paging units</font> form equivalent of <font color='red'>MMU</font>
+
+    ![img118](./image/NTHU_OS/img118.PNG)
+
+Example: The Intel Pentium
+
+1.Segmentation
+
+- <font color='red'>Logical-address space</font> is divided into 2 partitions：
+  - 1st: 8K ($2^{13}$) segments (private), local descriptor table (LDT)
+  - 2nd: 8K ($2^{13}$) segments (shared), global descriptor table (GDT)
+- Logical address：
+  - max # of segments per process = $2^{14}=16K$
+  - size of a segment <= $2^{32}=4GB$
+
+  ![img119](./image/NTHU_OS/img119.PNG)
+
+- Segment descriptor
+  - Segment base address and length
+  - Access right and privileged level
+
+  ![img120](./image/NTHU_OS/img120.PNG)
+
+2.Paging (Two-Level)
+
+- Page size can be either 4KB or 4Mb
+  - Each page directory entry has a flag for indication
+
+  ![img121](./image/NTHU_OS/img121.PNG)
+
+Example Question
+
+![img122](./image/NTHU_OS/img122.PNG)
 
 
 
