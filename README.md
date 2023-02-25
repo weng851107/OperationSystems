@@ -35,6 +35,18 @@ If there is related infringement or violation of related regulations, please con
     - [Paging (Non-Contiguous Memory Allocation)](#1.5.6)
     - [Segmentation (Non-Contiguous Memory Allocation)](#1.5.7)
     - [Segmentation with Paging](#1.5.8)
+  - [Chapter9: Virtual Memory Management](#1.6)
+    - [Background](#1.6.1)
+    - [Demand Paging](#1.6.2)
+    - [Process Creation](#1.6.3)
+    - [Page Replacement](#1.6.4)
+    - [Allocation of Frames](#1.6.5)
+    - [Thrashing](#1.6.6)
+  - [Chapter4: Multithreaded Programming](#1.7)
+    - [Thread Introduction](#1.7.1)
+    - [Multithreading Models](#1.7.2)
+    - [Threaded Case Study](#1.7.3)
+    - [Threading Issue](#1.7.4)
 
 
 <h1 id="0">Note</h1>
@@ -1834,6 +1846,485 @@ Example: The Intel Pentium
 Example Question
 
 ![img122](./image/NTHU_OS/img122.PNG)
+
+<h2 id="1.6">Chapter9: Virtual Memory Management</h2>
+
+<h3 id="1.6.1">Background</h3>
+
+Why we don't want to run a program that is entirely in memory
+
+- Many code for handling unusual errors or conditions
+- Certain program routines or features are rarely used
+- The same libray code used by many programs
+- Arra, lists and tables allocated but not used
+
+    > <font color='red'>We want better memory utilization</font>
+
+**Virtual Memory** - Separation of user logical memory from physical memory
+
+- To run a extremely <font color='red'>large process</font>
+  - Logical address space can be much larger than physical address space
+- To increase <font color='red'>CPU/resources utilization</font>
+  - higher degree of multiprogramming degree
+- To <font color='red'>simplify programming</font> tasks
+  - Free programmer from memory limitation
+- To run programs <font color='red'>faster</font>
+  - less I/O would be needed to load or swap
+
+- Virtual memory can be implemented via
+  - Demand paging
+  - Demand segmentation: more complicated due to variable sizes
+  - page 對硬體上比較好管理，而segmentation對使用者上寫program比較友善
+
+Virtual Memory vs. Physical Memory
+
+![img123](./image/NTHU_OS/img123.PNG)
+
+Example
+
+![img124](./image/NTHU_OS/img124.PNG)
+
+<h3 id="1.6.2">Demand Paging</h3>
+
+A page rather than the whole process is brought into memory only when it is needed
+
+- Less I/O needed --> Faster response
+- Less memory needed --> More users
+
+Page is needed when there is a reference to the page
+
+- Invalid reference --> abort
+- Not-in-memory --> bring to memory via paging
+
+Pure demand paging
+
+- Start a process with no page
+- Never bring a page into memory until it is required
+
+A <font color='red'>swapper</font> (midterm scheduler) manipulates the entire process, whereas a <font color='red'>pager</font> is concerned with the individual pages of a process
+
+Hardware support
+
+- <font color='red'>Page Table</font>： *a valid-invalid bit*
+  - 1 --> page in memory
+  - 0 --> page not in memory
+  - Initially, all such bits are set to 0
+- Secondary memory (swap space, backing store): Usually, a high-speed disk (swap device) is use
+
+Example
+
+- 載入process後，一開始memory是沒有被載入數據，等到訪問到Page Table後會產生abort，接著會把數據放進memory
+
+    ![img125](./image/NTHU_OS/img125.PNG)
+
+Page Fault Handling Steps
+
+- First reference to a page will trap to OS
+  - <font color='red'>page-fault trap</font>
+
+1. OS looks at the internal table (in PCB) to decide
+   - Invalid reference -> abort
+   - Just not in memory -> continue
+2. Get an empty frame
+3. Swap the page from disk (swap space) into the frame
+4. Reset page tavle, valid-invalid bit = 1
+5. <font color='red'>Restart CPU instruction</font>
+
+    ![img126](./image/NTHU_OS/img126.PNG)
+
+Page Replacement
+
+- If there is no free frame when a page fault occurs
+  - Swap a frame to backing store
+  - Swap a page from backing store into the frame
+  - Different page *replacement algorithms* pick different frames for replacement
+
+Demand Paging Performance
+
+- Effective Access Time (EAT)：<font color='red'>$(1-p)*ma+p*pft$</font>
+  - p:<font color='red'>page fault rate</font>, ma:mem. access time, pft:page fault time
+- Example: ma = 200ns, pft = 8ms
+  - EAT = 200ns + 7999800ns * p
+- <font color='red'>Access time is proportional to the page fault rate</font>
+  - If one access out of 1000 causes a page fault, then EAT = 8.2ms --> <font color='red'>slowdown by a factor of 40</font>
+  - For degradation less then 10%: $220 > 200+7999800*p$, <font color='red'>p < 0.0000025</font> -> one access out of 399990 to page fault.
+- 如上面來看，電腦有了virtual memory應該會造成訪問速度的降低，但實際上卻沒有，原因與TLB相似，如下所示
+- Programs tend to have <font color='red'>locality</font> of reference
+- Locality means program often accesses memory addresses that are close together
+  - <font color='red'>A single page fault can bring in 4KB memory content</font>
+  - Greatly reduce the occurrence of page fault
+- Major component of page fault time (about 8ms)
+  1. serve the page-fault interrupt
+  2. <font color='red'>read in the page from disk (most expensive)</font>
+  3. restart the process
+  - The 1st and 3rd can be reduced to several hundred instructions
+  - The page switch time is close to 8ms
+
+<h3 id="1.6.3">Process Creation</h3>
+
+Process & Virtual Memory
+
+- <font color='red'>Demand Paging</font>：only bring in the page containing the first instruction
+- <font color='red'>Copy-on-Write</font>：parent and the child process share the same frames initially, and frame-copy when a page is written --> fork()
+- <font color='red'>Memory-Mapped File</font>：map a file into the virtual address space to bypass file system calls (e.g. read(), write())
+
+Copy-on-Write
+
+- Allow both the *parent* and the *child* process to <font color='red'>share the same frames</font> in memory
+- If either process modifies a frame, only then a <font color='red'>frame is copied</font>
+- COW allow efficient process creation (e.g. fork())
+- Free frames are allocated from a pool of *zeroed-out frames* (security reson)
+  - The content of a frame is erased to 0
+
+When a child process is forked
+
+![img127](./image/NTHU_OS/img127.PNG)
+
+After a page is modified
+
+![img128](./image/NTHU_OS/img128.PNG)
+
+---
+
+Memory-Mapped Files
+
+- Approach：
+  - MMF *allows file I/O* to be treated as *routine memory access* by *mapping a disk block to a memory frame*
+  - A file is initially read using demand paging. Subsequent reads/writes to /from the file are treated as ordinary memory accesses
+- Benefit：
+  - <font color='red'>Faster file access</font> by using memory access rather than **read()** and **write()** system calls
+  - Allows several processes to map the SAME file allowing the pages in memory to be *SHARED*
+- Concerns：
+  - Security(access control), data lost, more programming efforts
+
+Memory-Mapped File Example
+
+![img129](./image/NTHU_OS/img129.PNG)
+
+- I/O read/write
+  - open後，會在user memory中創建一個buffer來存取數據，會先存取到kernel file cache，等到close後才會同步到file中
+
+    ![img130](./image/NTHU_OS/img130.PNG)
+
+- MMF
+  - 創建記憶體對應的file後，對記憶體進行操作，直到munmap後才會同步到file
+
+    ![img131](./image/NTHU_OS/img131.PNG)
+
+<h3 id="1.6.4">Page Replacement</h3>
+
+Page Replacement Concept
+
+- When a page fault occurs with no free frame
+  - <font color='red'>swap out a process</font>, freeing all its frames, or
+  - <font color='red'>page replacement</font>: find one not currently used and free it
+    - Use **<font color='red'>dirty bit</font>** to reduce overhead of page transfers - <font color='red'>only modified pages are written to disk</font>
+- Solve two major problems for demand paging
+  - **<font color='red'>frame-allocation algorithm</font>**:
+    - Determine <font color='red'>how many frames</font> to be allocated to a process
+  - **<font color='red'>page-replacement algorithm</font>**:
+    - select <font color='red'>which frame</font> to be replaced
+
+Page Replacement (Page Fault) Steps
+
+1. Find the location of the desired page on disk
+2. Find a free frame
+   - If there is a free frame, use i 
+   - If there is no free frame, use a page replacement algorithm to select a victim frame
+3. Read the desired page into the (newly) free frame. Update the page & frame tables
+4. Restart the process
+
+    ![img132](./image/NTHU_OS/img132.PNG)
+
+Page Replacement Algorithms
+
+> FIFO algorithm
+> Optimal algorithm
+> LRU algorithm
+> Counting algorithm
+> - LFU
+> - MFU 
+
+- Goal: <font color='red'>lowest page-fault rate</font>
+- Evaluation: running against a string of memory references (reference string) and computing the number of page faults
+- Reference string: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5
+
+---
+
+First-In-First-Out (FIFO) Algorithm
+
+- The oldest page in a FIFO queue is replaced
+- Reference string: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5
+- 3 frames (available memory frames = 3) -> 上面範例有9個 page faults
+
+    ![img133](./image/NTHU_OS/img133.PNG)
+
+FIFO Illustrating Belady's Anomaly
+
+- Does more allocated frames guarantee less page fault?
+  - Reference string: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5
+  - 4 frames (available memory frames = 4) -> 上面範例有10個page faults
+- Belady's anomaly
+  - Greater allocated frames -> 有可能會more page fault，而非較少個page fault
+
+    ![img134](./image/NTHU_OS/img134.PNG)
+
+    ![img135](./image/NTHU_OS/img135.PNG)
+
+---
+
+Optimal (Belady) Algorithm
+
+- Replace the page that will not be used for the *longest period of time*
+  - need future knowledge
+- 4 frames: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5  -> 6 page faults
+- In practice, we don't have future knowledge
+  - Only used for reference & comparison
+
+  ![img136](./image/NTHU_OS/img136.PNG)
+
+---
+
+LRU Algorithm (Least Recently Used)
+
+- An *approximation* of optimal algorithm:
+  - <font color='red'>looking backward</font>, rather than <font color='red'>forward</font>
+- It replaces the page that has <font color='red'>not been used for the longest period of time</font>
+- It is often used, and is considered as <font color='red'>quite good</font>
+
+LRU Algorithm Implementations
+
+- **<font color='red'>Counter implementation</font>**
+  - page referenced: <font color='red'>time stamp</font> is copied into the counter
+  - replacement: remove the one with oldest counter
+    - <font color='red'>linear search is required...</font>
+- **<font color='red'>Stack implementation</font>** -> Hash table + double-linked list
+  - page reference: move to top of the double-linked list
+  - replacement: remove the page at the bottom
+  - 4 frames: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5
+
+  ![img137](./image/NTHU_OS/img137.PNG)
+
+Stack Algorithm
+
+- A <font color='red'>property</font> of algorithms
+- **<font color='red'>Stack algorithm</font>**: the set of pages in memory for <font color='red'>n frames</font> is always <font color='red'>a subset</font> of the set of pages that would be in memory with <font color='red'>n+1 frames</font>
+- <font color='red'>Stack algorithms do not suffers from Belady's anomaly</font>
+- Both <font color='red'>optimal</font> algorithm and <font color='red'>LRU</font> algorithm are stack algorithm
+
+Counting Algorithms
+
+- LFU Algorithm (least frequently used)
+  - keep a counter for each page
+  - idea: An actively used page should have a large reference count
+- MFU Algorithm (most frequently used)
+  - idea: The page with the smallest count was probably just brought in and has yet to be used
+- Both counting algorithm are not common
+  - <font color='red'>implementation is expensive</font>
+  - do not approximate OPT algorithm very well
+
+<h3 id="1.6.5">Allocation of Frames</h3>
+
+Introduction
+
+- Each process needs <font color='red'>minimum</font> number of frames
+
+![img138](./image/NTHU_OS/img138.PNG)
+
+Frame Allocation
+
+- **<font color='red'>Fixed allocation</font>**
+  - <font color='red'>Equal allocation</font> - 100 frames, 5 processes -> 20 frames/process
+  - <font color='red'>Proportional allocation</font> - Allocate according to the size of the process
+- **<font color='red'>Priority allocation</font>**
+  - using <font color='red'>proportional allocation based on priority</font>, instead of size
+  - if process P generates a page fault
+    - select for replacement one of its frames
+    - select for replacement <font color='red'>from a process with lower priority</font>
+
+- **<font color='red'>Local allocation</font>**：each process <font color='red'>select from its own</font> set of <font color='red'>allocated frames</font>
+- **<font color='red'>Global allocation</font>**：process <font color='red'>selects</font> a replacement frame <font color='red'>from the set of all frames</font>
+  - <font color='red'>one process can take away a frame of another process</font>
+  - e.g. allow a high-priority process to take frames from a low-priority process
+  - good system performance and thus is <font color='red'>common used</font>
+  - A minimum number of frames must be maintained for each process to prevent <font color='red'>trashing</font>
+
+- 一般都是使用 "Global allocation" + Priority"
+
+<h3 id="1.6.6">Thrashing</h3>
+
+Definition of Thrashing
+
+- If a process does not have "enough" <font color='red'>frames</font>
+  - the process does not have # frames it needs to support pages in active use
+    --> Very <font color='red'>high paging activity</font>
+  - CPU在等I/O處理完，處於Idle
+- A process is **thrashing** if it is <font color='red'>spending more time paging than executing</font>
+
+    ![img139](./image/NTHU_OS/img139.PNG)
+
+Thrashing
+
+- Performance problem aused by thrashing (Assume global replacement is used)
+  - processes <font color='red'>queued for I/O</font> to swap(page fault)
+    -> <font color='red'>low CPU utilization</font>
+    -> <font color='red'>OS increases the degree of multiprogramming</font>
+    -> new processes take frames from old processes
+    -> more page faults and thus more I/O
+    -> CPU utilization drops even further
+- To prevent thrashing, must provide enough frames for each process:
+  - **Working-set model**, **Page-fault frequency**
+
+Working-Set Model
+
+- **Locality**：<u>a set of pages</u> that are <font color='red'>actively used together</font>
+- Locality model：as a process executes, it <font color='red'>moves from locality to locality</font>
+  - program structure (subroutine, loop, stack)
+  - data structure (array, table)
+- <font color='red'>Working-set model</font> (based on locality model)
+  - working-set <font color='red'>window</font>: a paremeter △(delta)
+  - working set: set of pages in most recent △ page references <font color='red'>(an approximation locality)</font>
+
+- Prevent thrashing using the working-set size
+  - $WSS_{i}$：working-set size for process i
+  - $D=\sum WSS_{i}$ (total demand frames)
+  - <font color='red'>If D > m (available frames) -> thrashing</font>
+  - The <font color='red'>OS monitors the $WSS_{i}$</font> of each process and <font color='red'>allocates to the process enough frames</font>
+    - if D << m, increase degree of Multiprogramming
+    - if D > m, <font color='red'>suspend a process</font>
+
+- 優點：
+  1. prevent thrashing while keeping the degree of multiprogramming as high as possible
+  2. optimize CPU utilization
+
+- 缺點：<font color='red'>too expensive for tracking</font>
+
+Working-Set Example
+
+- Working-Set Size(t1) = 5
+- Working-Set Size(t2) = 2
+
+    ![img140](./image/NTHU_OS/img140.PNG)
+
+Page Fault Frequency Scheme
+
+- **Page fault frequency** directly <font color='red'>measures and controls the page-fault rate</font> to prevent thrashing
+  - Establish <font color='red'>upper and lower bounds</font> on the desired page-fault rate of a process
+  - If page fault rate exceeds the upper limit
+    - <font color='red'>allocate another frame to the process</font>
+  - If page fault rate falls below the lower limit
+    - <font color='red'>remove a frame from the process</font>
+
+  ![img141](./image/NTHU_OS/img141.PNG)
+
+Working Sets and Page Fault Rates
+
+![img142](./image/NTHU_OS/img142.PNG)
+
+<h2 id="1.7">Chapter4: Multithreaded Programming</h2>
+
+<h3 id="1.7.1">Thread Introduction</h3>
+
+Threads
+
+- a.k.a <font color='red'>lightweight process</font>：basic unit of CPU utilization
+- All threads <font color='red'>belonging to the same process</font> share
+  - <font color='red'>code</font> section, <font color='red'>data</font> section, <font color='red'>heap</font> , and <font color='red'>OS resources</font> (e.g. open file and signals)
+- But each thread has its own (thread control block)
+  - <font color='red'>thread ID</font>, <font color='red'>program counter</font>, <font color='red'>register set</font>, and a <font color='red'>stack</font>
+
+  ![img143](./image/NTHU_OS/img143.PNG)
+
+Motivation
+
+![img144](./image/NTHU_OS/img144.PNG)
+
+Benefits of Mltithreading
+
+![img145](./image/NTHU_OS/img145.PNG)
+
+Why Thread?
+
+![img146](./image/NTHU_OS/img146.PNG)
+
+Multithcore Programming
+
+- **Multithreaded programming** provides a mechanism for <font color='red'>more efficient use of multiple cores</font> and <font color='red'>improved concurrency</font> (threads can run in parallel)
+- **Multicore system** putting pressure on <font color='red'>system designers</font> and <font color='red'>application programmers</font>
+  - OS designers: scheduling algorithms use cores to allow the parallel execution
+
+  ![img147](./image/NTHU_OS/img147.PNG)
+
+Challenges in Multicore Programming
+
+![img148](./image/NTHU_OS/img148.PNG)
+
+<h3 id="1.7.2">Multithreading Models</h3>
+
+User vs. Kernel Threads
+
+- **User thread** - thread management donw by <font color='red'>user-level threads library</font>
+  - PSIX Pthreads
+  - Win32 threads
+  - Java threads
+- **Kernel threads** - supported by the <font color='red'>kernel (OS)</font> directly
+  - Windows 2000 (NT)
+  - Solaris
+  - Linux
+  - Tru64 UNIX
+
+**User threads**
+
+- <font color='red'>Thread library</font> provides support for thread creation, scheduling, and deletion
+- Generally <font color='red'>fast</font> to create and manage
+- <font color='red'>If the kernel is single-threaded, a user-thread blocks -> entire process blocks</font> even if other threads are ready to run
+
+**Kernel threads**
+
+- The <font color='red'>kernel</font> performs thread creation, scheduling, etc.
+- Generally <font color='red'>slower</font> to create and manage
+- If a thread is blocked, the kernel can schedule another thread for execution
+
+User Threads 與 Kernel Threads 的對應關係
+
+![img149](./image/NTHU_OS/img149.PNG)
+
+Many-to-One
+
+- Many user-level threads mapped to single kernel thread
+- Used on systems that do not support kernel
+- threads
+- <font color='red'>Thread management is done in user space, so it is efficient</font>
+- 缺點：
+  - The entire process will block if a thread makes a blocking system call
+  - Only one thread can access the kernel at atime, <font color='red'>multiple threads are unable to run in parallel on multiprocessors</font>
+
+One-to-One
+
+- Each user-level thread maps to a kernel thread
+  - There could be a <font color='red'>limit on number of kernel threads</font>
+- 優點：<font color='red'>More concurrency</font>
+- 缺點：Overhead -> <font color='red'>Creating a thread requires creating the corresponding kernel thread</font>
+- Examples
+  - Windows XP/NT/2000
+  - Linux
+  - Solaris 9 and later
+
+Many-to-Many
+
+- <font color='red'>Multiplexes</font>many user-level threads to a smaller or equal number kernel threads
+- <font color='red'>Allows the developer to create as many user threads as wished</font>
+- 優點：
+  - The corresponding kernel threads can run in parallel on a multiprocessor
+  - <font color='red'>When a thread performs a blocking call, the kernel can schedule another thread for execution</font>
+- 缺點：系統較為複雜，且花費時間較長
+
+
+<h3 id="1.7.3">Threaded Case Study</h3>
+
+
+
+<h3 id="1.7.4">Threading Issue</h3>
 
 
 
