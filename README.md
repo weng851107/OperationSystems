@@ -3095,15 +3095,76 @@ Handling Dealocks
 Avoidance Algorithms
 
 - <font color='red'>Single instance</font> of a resource type
-  - **resource-allocation graph (RAG) algorithm** based on circle detection
+  - **resource-allocation graph (RAG) algorithm** based on <u>circle detection</u>
 - <font color='red'>Multiple instances</font> of a resource type
-  - **banker's algorithm** based on safe sequence detection
+  - **banker's algorithm** based on <u>safe sequence detection</u>
 
+Resource-Allocation Graph (RAG) Algorithm
+
+- 將claim edge畫上，避免掉會形成circle的情況
+
+![img216](./image/NTHU_OS/img216.PNG)
+
+![img217](./image/NTHU_OS/img217.PNG)
+
+Safe State / Safe Sequence
+
+- **safe state**：a system is in a safe state if there exists a sequence of allocations to satisfy requests by all processes
+  - This sequence of allocations is called **safe sequence**
+- safe state -> no deadlock
+- unsafe state -> possibility of deadlock
+- deadlock avoidance -> ensure that a system never enter an unsafe state
+
+Safe State with Safe Sequence
+
+![img218](./image/NTHU_OS/img218.PNG)
+
+![img219](./image/NTHU_OS/img219.PNG)
+
+![img220](./image/NTHU_OS/img220.PNG)
+
+Un-Safe State without Safe Sequence
+
+![img221](./image/NTHU_OS/img221.PNG)
+
+Banker's Algorithm
+
+- Use for <font color='red'>multiple instances</font> of each resource type
+- Banker algorithm：
+  - Use a general **safety algorithm** to <font color='red'>pre-determine</font> if any <font color='red'>safe sequence</font> exists after allocation
+  - Only proceed the allocation if safe sequence exists
+- Safety algorithm：
+  1. Assume processes need <font color='red'>maximum</font> resources
+  2. Find a process that can be satisfied by free resources
+  3. Free the resource usage of the process
+  4. Repeat to step 2 until all processes are satisfied
 
 <h3 id="1.10.5">Deadlock Detection</h3>
 
+用與Deadlock Avoidance相同的算法，但只確認目前狀態，而不用去avoid
 
+Single instance of each resource type
+
+![img222](./image/NTHU_OS/img222.PNG)
+
+Multiple instances of each resource type
+
+- 只需要Allocation和Request就可以
+
+![img223](./image/NTHU_OS/img223.PNG)
 
 <h3 id="1.10.6">Recovery from Deadlock</h3>
+
+*Process Termination*
+
+- abort all deadlocked processes
+- abort 1 process at a time until the deadlock cycle is eliminated
+  - which process should we abort first
+
+*Resource preemption*
+
+- select a victim: which one to preempt?
+- rollback: partial rollback or total rollback?
+- starvation: can the same process be preempted always?
 
 
