@@ -8,6 +8,7 @@ If there is related infringement or violation of related regulations, please con
 
 - [Note](#0)
 - [清大資工 周志遠 - 作業系統](#1)
+  - [Term Explaination](#1.0)
   - [Chapter0: Historical Prospective](#1.1)
     - [Mainframe Systems](#1.1.1)
     - [Computer-system Architecture](#1.1.2)
@@ -55,11 +56,17 @@ If there is related infringement or violation of related regulations, please con
   - [Chapter6: Process Synchrinization](#1.9)
     - [Background](#1.9.1)
     - [Critical Section](#1.9.2)
-    - [Synchronization Hardware](#1.9.3)
-    - [Semaphores](#1.9.4)
-    - [Classical Problems of Synchronization](#1.9.5)
+    - [Critical Section Solution & Synchronization Tools](#1.9.3)
+    - [Classical Problems of Synchronization](#1.9.4)
     - [Monitors](#1.9.6)
     - [Atomic Transactions](#1.9.7)
+  - [Chapter7: Deadlock](#1.10)
+    - [Deadlock Characterization](#1.10.1)
+    - [System Model](#1.10.2)
+    - [Deadlock Prevention](#1.10.3)
+    - [Deadlock Avoidance](#1.10.4)
+    - [Deadlock Detection](#1.10.5)
+    - [Recovery from Deadlock](#1.10.6)
 
 
 <h1 id="0">Note</h1>
@@ -69,6 +76,94 @@ If there is related infringement or violation of related regulations, please con
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
 https://ocw.nthu.edu.tw/ocw/index.php?page=course&cid=141
+
+<h2 id="1.0">Term Explaination</h2>
+
+System Call
+
+- OS interface, call to the OS service
+
+Context Switch
+
+- Switch between processes for execution
+
+Microkernel OS：
+
+- An OS structure that only keeps the minimum kernel functions in kernel space
+- It uses message passing to communicate between the functions in user space
+
+Time Sharing Systems
+
+- Processes are forced to switch from CPU execution after a fixed time interval, so that the CPU can be shared more fairly among processes
+
+Privilege instruction
+
+- An instruction that can only be executed in kernel mode
+
+Why memory address translation in modern computer first uses the segmentation and then uses the paging
+
+- Because segmentation can capture program's memory usage structure and pattern, so it is more convenient for users and programming
+- On the other hand, paging is fixed size, so it is easier for OS to manage the physical memory space and improve memory utilization by preventing interval or external fragmentations
+
+TLB
+
+- (a) What is TLB
+  - TLB is the cache of page table
+- (b) Why TLB can reduce memory access time
+  - It can eliminate the memory access for page table lookup
+- (c) Why TLB must be flushed after context switch?
+  - TLB is shared among all processes. Since each process has its own page table context, TLB must be flushed after context switch to prevent from reading the wrong content from other processes.
+
+Explain what is dynamic loading and why it can improve memory utilization
+
+- Dynamic loading only loads a function into memory when it is called.
+-  Since a program often contains many un-used functions for exception handling or other purposes, dynamic loading can reduce the memory usage of a program.
+
+Explain what is dynamic linking and why it can improve memory utilization
+
+- Dynamic linking is to share the library between processes at runtime.
+- When a process calls a dynamic linking library, the OS will first check if the library is loaded into the memory by other processes. 
+  - If the library has been loaded, the process will link to that library and re-use it. 
+  - Otherwise, the library will be loaded into the memory.
+- Dynamic linking can prevent duplicated library loaded into the memory, so it can reduce memory usage.
+
+Memory-Mapped file
+
+- (a) What is memory-mapped file?
+  - It maps file into memory
+  - File is associated by memory access (pointer) instead of file system call
+- (b) Give at least 2 pros and 2 cons about this method comparing to the file system calls
+  - Pros: faster data access, easier to share file content, easier for programming, etc.
+  - Cons: less secure, no access control, data loss problem, etc.
+- (c) Give an example use case that is suitable for using memory-mapped file
+  - I/O device input and output, like screen display, printer, etc.
+
+Why OS needs to break a one-level page table into multiple smaller page tables?
+
+- Because it is difficult to find contagious space on the physical memory to fit in large page table
+
+Choose the most suitable page table structure (inverted, hash, hierarchical page table) for each of the systems below
+
+- (a) System with scattered user memory space usage pattern
+  - Hash page table, because it can effectively reduce the page table size.
+- (b) System requiring fast memory access time
+  - One-level page table, because it only causes 1 additional memory access time for page table lookup.
+- (c) System running large number of processes, but without page sharing
+  - Inverted page table, because all the processes can share the same page table, and the page sharing doesn't need to be supported.
+
+What is Belady's anomaly?
+
+- Page fault increases when more resources(memory frames) are given
+
+Why it is NOT a desired property for OS design?
+
+- It makes system administrator or OS harder to design the proper management mechanism or algorithm to utilize system resource properly.
+
+Briefly explain why LRU does not have Belady's anomaly
+
+- LRU is a stack algorithm which means at any time the same set of pages will always in memory if we increase the number of frames.
+- By definition, LRU keeps the most recently used pages in memory.
+- Therefore, if the number of frames increases, it will definitely keep the original pages, and further include the next recently used page that was not included.
 
 <h2 id="1.1">Chapter0: Historical Prospective</h2>
 
@@ -2721,6 +2816,13 @@ Critical Section Requirements
 
 <h3 id="1.9.3">Critical Section Solution & Synchronization Tools</h3>
 
+How to ensure atomic wait & signal operations?
+
+- Single-Processor: disable interrupts
+- Multi-Processor:
+  - HW support: e.g. Test-And-Set, Swap
+  - SW solution (Peterson'solution, Bakery algorithm)
+
 #### Software Solution
 
 Algorithm for Two Processes
@@ -2778,33 +2880,230 @@ Atomic Swap()
 
 ![img195](./image/NTHU_OS/img195.PNG)
 
+#### Semaphores
+
+A tool to ggeneralize the synchronication problem -> <font color='red'>Easier to solve, but no guarantee for correctness</font>
+
+More specifically ...
+
+- A record of how many units of a particular resource are available
+  - If #record = 1 -> <font color='red'>binary semaphore, mutex lock</font>
+  - If #record > 1 -> <font color='red'>counting semaphore</font>
+- accessed only through 2 atomic operations: <font color='red'>wait</font> & <font color='red'>signal</font>
+
+Spinlock(busy waiting) implementation
+
+![img197](./image/NTHU_OS/img197.PNG)
+
+POSIX Semaphore
+
+![img198](./image/NTHU_OS/img198.PNG)
+
+n-Process Critical Section Problem
+
+![img199](./image/NTHU_OS/img199.PNG)
+
+Non-busy waiting Implementation
+
+![img200](./image/NTHU_OS/img200.PNG)
+
+- 若等待時間很短，會採用busy waiting，因為non-busy waiting會呼叫system call，很花時間(相對於CPU instruction時間)，若等待時間很長就會用non-busy waiting
+
+Cooperation Synchronization -> 按照想執行的順序去執行
+
+![img201](./image/NTHU_OS/img201.PNG)
+
+
+#### Monitors
+
+參考 [1.9.5](#1.9.5)
+
+<h3 id="1.9.4">Classical Problems of Synchronization</h3>
+
+- Bounded-Buffer (Producer-Consumer) Problem
+- Reader-Writers Problem
+- Dining-Philosopher Problem
+
+Bounded-Buffer (Producer-Consumer) Problem
+
+![img202](./image/NTHU_OS/img202.PNG)
+
+Reader-Writers Problem
+
+![img203](./image/NTHU_OS/img203.PNG)
+
+- First Reader-Writer Problem
+
+    ![img204](./image/NTHU_OS/img204.PNG)
+
+Dining-Philosopher Problem
+
+![img205](./image/NTHU_OS/img205.PNG)
+
+<h3 id="1.9.5">Monitors</h3>
+
+Although semaphores provide a convenient and effective synchronization mechanism, its correctness is depending on the programmer
+
+- <font color='red'>All processes access a shared data object must execute wait() and signal() in the right order and right place</font>
+- This may not be ture because honest programming error or uncooperative programmer
+
+Monitor --- <font color='red'>A high-level language construct</font>
+
+- The representation of a **monitor type** consists of 
+  - Declarations of <font color='red'>variables</font> whose values define the state of an instance of the type
+  - <font color='red'>Procedures/functions</font> that implement operations on th type
+- The monitor type is similar to a <font color='red'>class in Objected-Oriented Language</font>
+  - A procedure within a monitor can access only <font color='red'>local variables</font> and the formal <font color='red'>parameters</font>
+  - The local variables of a monitor can be used only by the local procedures
+- But, the monitor ensures that <font color='red'>only one process at a time can be **active** within the monitor</font>
+
+![img206](./image/NTHU_OS/img206.PNG)
+
+Monitor Condition Variables
+
+![img207](./image/NTHU_OS/img207.PNG)
+
+- enqueue 和 dequeue 的概念 from waiting queue
+- Monitor可以同時有很多個thread，但一次只能有一個是active
+
+Dining Philosophers Example
+
+![img210](./image/NTHU_OS/img210.PNG)
+
+![img208](./image/NTHU_OS/img208.PNG)
+
+![img209](./image/NTHU_OS/img209.PNG)
+
+![img211](./image/NTHU_OS/img211.PNG)
+
+<h3 id="1.9.6">Atomic Transactions</h3>
+
+System Model
+
+- **Transaction**: <font color='red'>a collection of instructions</font> (or instructions) that performs a <font color='red'>single logic function</font>
+- **Atomic Transaction**: operations happen as a single logical unit of work, <font color='red'>in its entirely, or not at all</font>
+- Atomic transaction is particular a concern for <font color='red'>database system</font>
+  - Strong interest to use DB techniques in OS
+
+File I/O Example
+
+- Transaction is a series of **read** and **write** operations
+- Terminated by **commit** (transaction successful) or **abort** (transaction failed) operation
+- Aborted transaction must be **rolled back** to undo any changes it performed
+  - It is part of the responsibility of the system to ensure this property
+
+Checkpoints 系統還原點
+
+![img212](./image/NTHU_OS/img212.PNG)
+
+<h2 id="1.10">Chapter7: Deadlock</h2>
+
+<h3 id="1.10.1">Deadlock Characterization</h3>
+
+Deadlock Problem
+
+- A set of blocked processes each <font color='red'>holding</font> some resources and <font color='red'>waiting</font> to acquire a resource held by another process in the set
+- Ex1: 2 processes and 2 tape drivers
+  - Each process holds a tape drive
+  - Each process requests another tape drive
+- Ex2: 2 processes, and semaphores A & B
+  - P1 (hold B, wait A): <font color='red'>wait(A), signal(B)</font>
+  - P2 (hold A, wait B): <font color='red'>wait(B), signal(A)</font>
+
+Necessary Conditions
+
+- **Mutual exclusion**:
+  - only 1 process at a time can use a resource
+- **Hold & Wait**:
+  - a process holding some resources and is waiting for another resource
+- **No preemption**
+  - a resource can be only released by a process voluntarily
+- **Circular wait**
+  - there exists a set {$P_0, P_1, ..., P_n$} of waiting processes such that $P_0 -> P_1 -> P_2 -> ... -> P_n -> P_0$
+
+<h3 id="1.10.2">System Model</h3>
+
+System Model
+
+- Resources types $R_1, R_2, ..., R_m$
+  - E.g. CPU, memory pages, I/O devices
+- Each resource type $R_i$ has $W_i$ instances
+  - E.g. a computer has 2 CPUs
+- Each process utilizes a resource as follows:
+  - <font color='red'>Request -> use -> release</font>
+
+  ![img213](./image/NTHU_OS/img213.PNG)
+
+  ![img214](./image/NTHU_OS/img214.PNG)
+
+  ![img215](./image/NTHU_OS/img215.PNG)
+
+Deadlock Detection
+
+- If graph contains <font color='red'>no cycle -> no deadlock</font>
+  - <font color='red'>Circular wait</font> cannot be held
+- If graph contains a cycle:
+  - if <font color='red'>one instance per resource type</font> -> deadlock
+  - if <font color='red'>multiple instances per resource type</font> -> <font color='red'>possibility</font> of deadlock
+
+Handling Dealocks
+
+- Ensure the system will <font color='red'>never enter a deadlock state</font>
+  - deadlock **prevention**: ensure that at least one of the <font color='red'>4 necessary conditions</font> cannot hold
+  - deadlock **avoidance**: <font color='red'>dynamically</font> examines the resource-allocation state before allocation
+- Allow to <font color='red'>enter a dealock state</font> and <font color='red'>then recover</font>
+  - deadlock **detection**
+  - deadlock **recovery**
+- *Ignore the problem* and pretend that deadlocks never occur in the system
+  - used by most operating systems, including UNIX.
+
+<h3 id="1.10.3">Deadlock Prevention</h3>
+
+**Mutual Exclusion (ME)**: do not require ME on sharable resources
+
+- e.g. there is no need to ensure ME on read-only files
+- Some resources are not shareable, however(e.g. printer)
+
+**Hold & Wait**:
+
+- When a process requests a resource, it does not hold any resource
+- Pre-allocate all resources before executing
+- Cons: resource utilization is low; starvation is possible
+
+**No preemption**:
+
+- When a process is waiting on a resource, all its holding resources are preempted
+  - e.g. P1 request R1, whicj is allocated to P2, which in turn tis waiting on R2 (P1 -> R1 -> P2 -> R2)
+  - <font color='red'>R1 can be preempted and reallocated to P1</font>
+- Applied to resources whose states can be easily saved and restored later
+  - e.g. CPU registers & memory
+- <font color='red'>It cannot easily be applied to other resources</font>
+  - e.g. printers & tape drives
+
+**Circular wait**:
+
+- impose a total ordering of all resources types
+- a process requests resources in an increasing order
+  - Let R = {R0, R1, ..., Rn} be the set of resource types
+  - <font color='red'>When request $R_k$, should release all $R_i, i>=k$</font>
+- Example:
+  - F(tape drive) = 1, F(disk drive) = 5, F(printer) = 12
+  - A process must request tape and disk drive before printer
+
+<h3 id="1.10.4">Deadlock Avoidance</h3>
+
+Avoidance Algorithms
+
+- <font color='red'>Single instance</font> of a resource type
+  - **resource-allocation graph (RAG) algorithm** based on circle detection
+- <font color='red'>Multiple instances</font> of a resource type
+  - **banker's algorithm** based on safe sequence detection
+
+
+<h3 id="1.10.5">Deadlock Detection</h3>
 
 
 
-
-
-Semaphores
-
-
-Monitors
-
-
-
-
-<h3 id="1.9.3">Synchronization Hardware</h3>
-
-
-
-<h3 id="1.9.4">Semaphores</h3>
-
-
-<h3 id="1.9.5">Classical Problems of Synchronization</h3>
-
-
-<h3 id="1.9.6">Monitors</h3>
-
-
-
-<h3 id="1.9.7">Atomic Transactions</h3>
+<h3 id="1.10.6">Recovery from Deadlock</h3>
 
 
