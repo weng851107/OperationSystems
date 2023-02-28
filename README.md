@@ -67,10 +67,31 @@ If there is related infringement or violation of related regulations, please con
     - [Deadlock Avoidance](#1.10.4)
     - [Deadlock Detection](#1.10.5)
     - [Recovery from Deadlock](#1.10.6)
-
+  - [Chapter10: File System Interface](#1.11)
+    - [File Concept](#1.11.1)
+    - [Access Methods](#1.11.2)
+    - [Directory Structure](#1.11.3)
+    - [File System Mounting](#1.11.4)
+    - [File Sharing](#1.11.5)
+    - [Pretection](#1.11.6)
+  - [Chapter11: File System Implementation](#1.12)
+    - [File System Structure](#1.12.1)
+    - [File System Implementation](#1.12.2)
+    - [Disk Allocation Methods](#1.12.3)
+    - [Free Space Management](#1.12.4)
+  - [Chapter12: Mass Storage System](#1.13)
+    - [Disk Structure](#1.13.1)
+    - [Disk Scheduling](#1.13.2)
+    - [Disk & Swap-Space Management](#1.13.3)
+    - [RAID](#1.13.4)
+  - [Chapter13: I/O System](#1.14)
+    - [Overview](#1.14.1)
+    - [I/O Hardware](#1.14.2)
+    - [I/O Methods](#1.14.3)
+    - [Kernel I/O Subsystem](#1.14.4)
+    - [Performance](#1.14.5)
 
 <h1 id="0">Note</h1>
-
 
 
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
@@ -3167,4 +3188,763 @@ Multiple instances of each resource type
 - rollback: partial rollback or total rollback?
 - starvation: can the same process be preempted always?
 
+<h2 id="1.11">Chapter10: File System Interface</h2>
 
+<h3 id="1.11.1">File Concept</h3>
+
+File
+
+- a <font color='red'>logical storage unit</font> created by OS v.s. <font color='red'>physical storage unit</font> in disk (SSD, HDD(sector, track))
+
+File Attributes
+
+- Identifier: non-human-readable name
+- Name
+- Type
+- Location
+- Size
+- Protection
+- Last-access time, Last-updated time
+
+File Operations
+
+- file operations include
+  - Creating a file
+  - Writing a file
+  - Reading a file
+  - Repositioning within a file (i.e. file seek)
+  - Deleting a file
+  - Truncating a file
+- Process: **open-file table**
+- OS: **system-wide table**
+
+Open-File Tables
+
+- **Per-process table**
+  - Tracking all files opened by this process
+  - Current <font color='red'>file pointer</font> for each opened by this process
+  - Current file pointer for each opened file
+  - <font color='red'>Access rights</font> and <font color='red'>accounting</font> information
+- **System-wide table**
+  - Each entry in the per-process table points to this table
+  - <font color='red'>Process-independent information</font> such as disk location, access dates, file size
+  - <font color='red'>Open count</font>
+
+  ![img224](./image/NTHU_OS/img224.PNG)
+
+Open File Attributes
+
+- 副檔名只適用於提示作業系統要用什麼應用程式去執行，讓作業系統優先用某應用程式去執行，並沒有太多的實質意義
+
+    ![img225](./image/NTHU_OS/img225.PNG)
+
+<h3 id="1.11.2">Access Methods</h3>
+
+Sequential access Methods
+
+- Read/write next (block)
+- Reset: repositioning the file pointer to the beginning
+- Skip/rewind n records
+
+    ![img226](./image/NTHU_OS/img226.PNG)
+
+Direct (relative) access Methods
+
+- Access an element at an <font color='red'>arbitrary position</font> in a sequence -> 通常需要硬體支持來加速訪問速度 (cache)
+- File operations include the <font color='red'>block #</font> as parameter
+- Often use <font color='red'>random access</font> to refer the <font color='red'>access pattern</font> from direct access
+
+    ![img227](./image/NTHU_OS/img227.PNG)
+
+Index Access Methods
+
+- Index: contains pointer to <font color='red'>blocks of a file</font>
+- To find a record in a file：
+  - search the index file -> find the pointer
+  - use the pointer to directly access the record
+- With a large file -> index could become too large
+
+    ![img228](./image/NTHU_OS/img228.PNG)
+
+<h3 id="1.11.3">Directory Structure</h3>
+
+Partition, Volume and Directory
+
+- A **partition** (<font color='red'>formatted</font> or <font color='red'>raw</font>)
+  - <font color='red'>raw partition (no file system): UNIX swap space, database</font>
+  - <font color='red'>Formatted partition with file system</font> is called **volume**
+  - a partition can be a portion of a disk or group of multiple disks (distributed file system)
+  - Some storage device (e.g. floppy disk) does not and cannot have partition
+
+- **Directories** are used by file system to store the information about the files in the partition
+
+File-System Organization
+
+- Formatted Partition 包含 directory 與 file 等等的資料結構
+
+    ![img229](./image/NTHU_OS/img229.PNG)
+
+Directory vs. File
+
+- Directory：A collection of nodes containing information about all files
+  - Both the directory structure and the files reside on disk
+
+    ![img230](./image/NTHU_OS/img230.PNG)
+
+Directory Operation
+
+- Search for a file
+- Create a file
+- Delete a file
+- List a directory --> `ls`
+- Rename a file
+- Traverse the file system
+
+Single-Level Directory
+
+- All files in one directory
+  - Filename has to be <font color='red'>unique</font>
+  - <font color='red'>Poor efficiency</font> in locating a file as number of files increases
+
+  ![img231](./image/NTHU_OS/img231.PNG)
+
+Two-Level Directory
+
+- a separate firectory for <font color='red'>each user</font>
+- path = user name + file name
+- single-level firectory problems still exists per user
+
+    ![img232](./image/NTHU_OS/img232.PNG)
+
+Tree-Structured Directory
+
+- **Absolute path**：startung from the root
+- **Relative path**：starting from a directory
+
+    ![img233](./image/NTHU_OS/img233.PNG)
+
+Acyclic-Graph Directory
+
+- Use links to share files or directories
+  - UNIX-like: **symbolic link** (`ln -s /spell/count /dict/count`)
+- A file can have <font color='red'>multiple absolute paths</font>
+- When does a file actually get deleted?
+  - deleting the link but not the file
+  - deleting the file but leaves the link -> <font color='red'>dangling pointer</font>
+  - deleting the file when <font color='red'>reference counters</font> is 0
+
+  ![img234](./image/NTHU_OS/img234.PNG)
+
+General-Graph Directory
+
+- <font color='red'>May contain cycles</font> -> dangling pointer
+  - Reference count does not work any more
+  - E.g. self-referencing file
+- How can we deal with cycles
+  - **Garbage collection** -> 太耗費時間
+    - First pass traverses the entire graph and marks accessible files or directories
+    - Second pass collect and free everything that is un-marked
+
+  ![img235](./image/NTHU_OS/img235.PNG)
+
+
+<h3 id="1.11.4">File System Mounting</h3>
+
+A file system must be <font color='red'>mounted before</font> it can be <font color='red'>accessed</font>
+
+**Mount point**：<font color='red'>the root path</font> that a FS will be mounted to
+
+**Mount timing**
+
+- boot time
+- automatically at run-time
+- manually at run-time
+
+File System Mounting Example
+
+![img236](./image/NTHU_OS/img236.PNG)
+
+Mount Table
+
+![img237](./image/NTHU_OS/img237.PNG)
+
+<h3 id="1.11.5">File Sharing</h3>
+
+File Sharing on Multiple Users
+
+- Each user: (**userID**, **groupID**)
+  - ID is associated with every ops/process/thread the user issue
+- Each file has 3 sets of attributes
+  - **owner**, **group**, **others**
+- Owner attributes describe the <font color='red'>privileges</font> for the owner of the file
+  - same for group/other attributes
+  - group/others attributes are set by owner or root
+
+  ![img238](./image/NTHU_OS/img238.PNG)
+
+Access-Control List
+
+- We can create an **access-control list (ACL)** for <font color='red'>each user</font>
+  - check requested file access against ACL
+  - problem: unlimited # of users
+- 3 classes of users -> <font color='red'>3 ACL (RWX) for each file</font>
+  - owner (e.g. 7=RWX=111)
+  - group (e.g. 6=RWX=110)
+  - public (others) (e.g. 4=RWX=100)
+
+  ![img239](./image/NTHU_OS/img239.PNG)
+
+<h3 id="1.11.6">Pretection</h3>
+
+File owner/creator should be able to control
+- what can be done
+- by whom -> Access control list (ACL)
+
+File should be kept from
+- physical damage (reliability): i.e. <font color='red'>RAID</font>
+- improper access (protection): i.e. password
+
+<h2 id="1.12">Chapter11: File System Implementation</h2>
+
+<h3 id="1.12.1">File System Structure</h3>
+
+I/O transfers between memory and disk are performed in units of **blocks**
+- one block is one or more **sectors**
+- one sector is usually 512 bytes
+
+One OS can support more than 1 FS types
+- NTFS. FAT32
+
+Two design problems in FS
+- interface to <font color='red'>user programs</font>
+- interface to <font color='red'>physical storage (disk)</font>
+
+Layered File System
+
+![img240](./image/NTHU_OS/img240.PNG)
+
+<h3 id="1.12.2">File System Implementation</h3>
+
+On-Disk Structure
+
+- **Boot control block** (per partition)：information needed to boot an OS from that partition
+  - typical the <font color='red'>first block of the partition (empty means no OS)</font>
+  - UFS (Unix File System): <font color='red'>boot block</font>, NTFS: partition boot sector
+- **Partition control block** (per partition)：partition details
+  - details: # of blocks, block size, free-block-list, free FCB pointers, etc
+  - UFS: <font color='red'>superblock</font>, NTFS: Master File Table
+- **File control block** (per file)：details regarding a file
+  - details: permissions, size, location of data blocks
+  - UFS: <font color='red'>inode</font>, NTFS: stored in MFT (relational database)
+- **Directory structure** (per file system) organize files
+
+    ![img241](./image/NTHU_OS/img241.PNG)
+
+In-Memory Structure
+
+- **in-memory partition table**：information about each <font color='red'>mounted partition</font>
+- **in-memory directory structure**：information <font color='red'>recently accessed directory</font>
+- **system-wide open-file table**：contain a copy of each <font color='red'>opened file's FCB</font>
+- **per-process open-file table**：<font color='red'>pointer (file handler/descriptor)</font> to the corresponding entry in the above table
+
+File Open & File Read
+
+![img242](./image/NTHU_OS/img242.PNG)
+
+File Creation Procedure
+
+1. OS allocates a new **FCB**
+2. Update **directory structure**
+   1. OS reads in the corresponding directory structure into memory
+   2. Updates the directory strcture with the new file name and the FCB
+   3. (After file being closed), OS writes back the directory structure back to disk
+3. The file appears in user's directory command
+
+- Note: 另一方面會存log，避免尚未寫回時，斷電遺失資料，有log可以知道有做什麼操作
+
+Virtual File System
+
+- VFS provides an <font color='red'>object-oriented way of implementing file systems</font>
+- VFS allows the <font color='red'>same</font> **system call interface** to be used for <font color='red'>different typeds of FS</font>
+- VFS calls the appropriate FS routines based on the partition info
+
+    ![img243](./image/NTHU_OS/img243.PNG)
+
+- Four main object types defined by Linux VFS：
+  - **inode** -> an individual <font color='red'>file</font> (對應 FS 中的 file control block)
+  - **file object** -> an <font color='red'>open file</font>
+  - **superblock object** -> an entire <font color='red'>file system</font> (對應 FS 中 partition control block 的相關資訊)
+  - **dentry object** -> an individual <font color='red'>directory</font> entry
+- VFS defines a set of operations that must be implemented (e.g. for file object)
+  - int open(...) -> opene a file
+  - ssize_t read() -> read from a file
+
+Directory Implementation
+
+- **Linaer lists**
+  - list of file names with pointers to data blocks
+  - easy to program but poor performance
+    - insertion, deletion, searching
+- **Hash table** - linear list with hash table structure
+  - constant time for searching
+  - linked list for collisions on a hash entry
+  - hash table usually has fixed # of entries
+
+<h3 id="1.12.3">Disk Allocation Methods</h3>
+
+Outline
+
+- An allocation method refers to how <font color='red'>disk blocks</font> are allocated for <font color='red'>files</font>
+- Allocation strategy：
+  - **Contiguous allocation**
+  - **Linked allocation**
+  - **Indexed allocation**
+
+Contiguous Allocation
+
+- Each file occupies **a set of contiguous blocks**
+  - <font color='red'>\# of disk seeks is minimized</font>
+  - The directory entry for each file = (starting #, size)
+- Both <font color='red'>sequential & random access can be implemented efficiently</font>
+- Problems
+  - <font color='red'>External fragmentation</font> -> compaction
+  - <font color='red'>File cannot grow</font> -> extend-based FS
+
+  ![img244](./image/NTHU_OS/img244.PNG)
+
+Extent-Based File System
+
+- Many newer file system use a <font color='red'>modified contiguous allocation scheme</font>
+- Extent-based file systems allocate disk blocks in extents
+- An extent is <font color='red'>contiguous blocks</font> of disks
+  - A file contains one or more extents
+  - An extent: **(starting block #, length, pointer to next extent)**
+  - <font color='red'>Random access become more costly</font>
+  - <font color='red'>Both internal & external fragmentation are possible</font>
+
+Linked Allocation
+
+- Each file is <font color='red'>a linked list of blocks</font>
+  - <font color='red'>Each block contains a pointer</font> to the next block
+    -> data portion: (block size - pointer size)
+- File read：following through the list
+
+    ![img245](./image/NTHU_OS/img245.PNG)
+
+- Problems
+  - <font color='red'>Only good for sequential-access files</font>
+    - <font color='red'>Random access requires traversing through the link list</font>
+    - <font color='red'>Each access to a link list is a disk I/O (because link pointer is stored inside the data block)</font>
+  - Space required for pointer (4/512=0.78%)
+    - solution: unit = <font color='red'>cluster of blocks</font>
+    -> internal fragmentation
+  - Reliability
+    - One missing link braks the whole file 
+
+FAT (File Allocation Table) file system
+
+![img246](./image/NTHU_OS/img246.PNG)
+
+Indexed Allocation Example
+
+- <font color='red'>The directory contains the address of the file index block</font>
+- <font color='red'>Each file has its own index block</font>
+- Index block stores <font color='red'>block #</font> for file data
+
+![img247](./image/NTHU_OS/img247.PNG)
+
+Indexed Allocation
+
+- Bring all the pointers together into one location: the <font color='red'>index block</font> (one for each file)
+- 優點：
+  1. Implement <font color='red'>direct and random access efficiently</font>
+  2. No external fragmentation
+  3. Easy to create a file (no allocation problem)
+- 缺點：
+  1. Space for index block s
+  2. <font color='red'>How large the index block should be?</font>
+     - **linked scheme**
+     - **multilevel index**
+     - **combined scheme** (inode in BSD UNIX)
+
+Linked Indexed Scheme
+
+![img248](./image/NTHU_OS/img248.PNG)
+
+Multilevel Scheme (two-level)
+
+![img249](./image/NTHU_OS/img249.PNG)
+
+Combined Scheme: UNIX inode
+
+- File pointer: 4bytes(32bits) -> reach only 4GB
+- Let each data/index block be 4KB
+- 檔案小使用direct blocks，檔案大時使用multilevel
+
+    ![img250](./image/NTHU_OS/img250.PNG)
+
+<h3 id="1.12.4">Free Space Management</h3>
+
+Free-Space List：records all free disk blocks
+
+Scheme
+
+- <font color='red'>Bit vector</font>
+- <font color='red'>Linked list (same as linked allocation)</font>
+- <font color='red'>Grouping (same as linked index allocation)</font>
+- <font color='red'>Counting (same as contiguous allocation)</font>
+
+File system ususally manage free space in the same way <font color='red'>as a file</font>
+
+Bit vector
+
+- Bit Vector (bitmap): one bit for each block
+  - e.g. 00111100111111111001110011000000.....
+
+- 優點：simplicity, efficient (HW support bit-manipulation instruction)
+- 缺點：bitmap must be cached for good performance
+  - A 1-TB(4KB block) disk needs 32MB bitmap
+
+  ![img251](./image/NTHU_OS/img251.PNG)
+
+Linked list (same as linked allocation)
+
+![img252](./image/NTHU_OS/img252.PNG)
+
+Grouping (same as linked index allocation) & Counting (same as contiguous allocation)
+
+![img253](./image/NTHU_OS/img253.PNG)
+
+<h2 id="1.13">Chapter12: Mass Storage System</h2>
+
+<h3 id="1.13.1">Disk Structure</h3>
+
+Disk drives are addressed as large <font color='red'>1-dim arrays of logical blocks</font>
+
+- logical block: smallest unit of transfer (**sector**)
+
+Logical block s are mapped onto disk sequentially
+
+- sector 0: 1st sector of 1st track on the outermost cycle
+- go from outermost cylinder to innermost one
+
+    ![img254](./image/NTHU_OS/img254.PNG)
+
+Sectors per Track
+
+- **Constant linear velocity (CLV)**
+  - <font color='red'>density</font> of bits per track <font color='red'>is uniform</font>
+  - <font color='red'>more sectors on a track in outer cylinders</font>
+  - keeping same data rate
+    -> <font color='red'>increase rotation speed in inner cylinders</font>
+  - applications: CD-ROM and <font color='red'>DVD-ROM</font>
+- **Constant angular velocity (CAV)**
+  - keep same rotation speed
+  - <font color='red'>larger bit density on inner tracks</font>
+  - keep same data rate
+  - applications: <font color='red'>hard disks</font>
+
+Disk IO
+
+- Disk drive attached to a computer by an I/O bus
+  - EIDE, ATA, SATA(Serial ATA), USB, SCSI, etc
+  - I/O bus is controlled by controller
+    - Host controller (computer end)
+    - Disk controller (built into disk drive)
+
+  ![img255](./image/NTHU_OS/img255.PNG)
+
+<h3 id="1.13.2">Disk Scheduling</h3>
+
+Introduction
+
+![img256](./image/NTHU_OS/img256.PNG)
+
+Disk Scheduling
+
+![img257](./image/NTHU_OS/img257.PNG)
+
+FCFS (First-Come-First-Served)
+
+![img258](./image/NTHU_OS/img258.PNG)
+
+SSTF (Shortest-Seek-Time-First)
+
+![img259](./image/NTHU_OS/img259.PNG)
+
+SCAN
+
+![img260](./image/NTHU_OS/img260.PNG)
+
+C-SCAN (Circular SCAN)
+
+- 移到底，會直接再回到頭再重新掃
+
+    ![img261](./image/NTHU_OS/img261.PNG)
+
+C-LOOK
+
+- 左右移動的極值會根據queue裡面來決定
+- 相似於SSTF且只能單方向
+
+    ![img262](./image/NTHU_OS/img262.PNG)
+
+Selecting Disk-Scheduling Algorithm
+
+![img263](./image/NTHU_OS/img263.PNG)
+
+<h3 id="1.13.3">Disk & Swap-Space Management</h3>
+
+Disk Formatting
+
+- <font color='red'>Low-level formatting</font> (or physical formatting)：dividing a disk (magnetic recording material) into sectors that disk controller can read and write
+  - <font color='red'>each sector = header + data area + trailer</font>
+    - header & trailer: sector # and ECC(error-correcting code)
+    - ECC is calculated based on all bytes in data area
+    - data area size: 512B, 1KB1 4KB
+- OS does the next 2 steps to use the disk
+  - <font color='red'>partition</font> the disk into one or more groups of cylinders
+  - <font color='red'>logical formatting</font> (i.e. creation of a file system)
+
+Boot Block
+
+- Bootstrap program
+  - Initialize CPU, registers, device controllers, memory, and then start OS
+  - First **bootstrap code** store in <font color='red'>ROM</font>
+  - Complete bootstrap in the **boot block** of the <font color='red'>boot disk</font> (aka system disk)
+
+Booting from a Disk in Windows 2000
+
+![img264](./image/NTHU_OS/img264.PNG)
+
+Bad Blocks
+
+![img265](./image/NTHU_OS/img265.PNG)
+
+Swap-Space Management
+
+- Swap-space: virtual memory use disk space (swap-space) as an extension of main memory
+- UNIX: allows use of multiple swap spaces
+- Location
+  - part of a normal file system (e.g. NT)
+    - less efficient
+  - separate disk partition (raw partition) -> 不用透過File System
+    - Size is fixed
+  - allows access to both types (e.g. Linux) -> 超過的容量大小後才用normal file system
+
+Swap Space Allocation
+
+![img266](./image/NTHU_OS/img266.PNG)
+
+Data Structures for Swapping (Linux)
+
+- 利用 counter 去計算哪個page有沒有process在使用swap space
+
+    ![img267](./image/NTHU_OS/img267.PNG)
+
+<h3 id="1.13.4">RAID</h3>
+
+RAID Disks
+
+- 透過多個普通硬碟來達到一個高級硬碟的功用與信賴度
+- RAID = Redundant Arrays of Inexpensive Disks
+  - provide <font color='red'>reliability</font> via <font color='red'>redundancy</font>
+  - improve <font color='red'>performance</font> via <font color='red'>parallelism</font>
+
+- RAID is arranged into different levels
+  - Striping
+  - Mirror (Replication)
+  - Error-correcting code (ECC) & Parity bit
+
+RAID0
+
+- non-redundant **striping**
+  - Improve <font color='red'>performance</font> via <font color='red'>parallelism</font>
+  - I/O bandwidth is proportional to the striping count
+    - <font color='red'>Both read and write BW increase by N times (N is the number of disks)</font>
+
+  ![img268](./image/NTHU_OS/img268.PNG)
+
+RAID1
+
+- Mirrored disks
+  - Provide <font color='red'>reliability</font> via <font color='red'>redundancy</font>
+    - Read BW increases by N times
+    - Write BW remains the same
+
+  ![img269](./image/NTHU_OS/img269.PNG)
+
+RAID2: Hamming code
+
+![img270](./image/NTHU_OS/img270.PNG)
+
+RAID3 & RAID4: Parity Bit 
+
+![img271](./image/NTHU_OS/img271.PNG)
+
+RAID5: Distributed Parity
+
+![img272](./image/NTHU_OS/img272.PNG)
+
+![img273](./image/NTHU_OS/img273.PNG)
+
+RAID6: P+Q Dual Parity Redundancy
+
+![img274](./image/NTHU_OS/img274.PNG)
+
+Hybrid RAID
+
+![img275](./image/NTHU_OS/img275.PNG)
+
+<h2 id="1.14">Chapter13: I/O System</h2>
+
+<h3 id="1.14.1">Overview</h3>
+
+The two main jobs of a computer
+
+- <font color='red'>I/O</font> and <font color='red'>Computation</font>
+
+**I/O device**
+
+- tape, HD, mouse, joystick, network card, screen, flash disks, etc
+
+**I/O subsystem**
+
+- the methods to control all I/O devices
+
+Two conflicting trends
+
+- Standardization of HW/SW interfaces
+- Board variety of I/O devices
+
+**Device drivers**
+
+- a uniform device-access <font color='red'>interface to the I/O subsystem</font>
+
+Device categories
+
+- Storage device: disks, tapes
+- Transmission devices: network cards, modems
+- Human-interface devices: heyboard, screen, mouse
+- Specialized devices: joystick, touchpad
+
+<h3 id="1.14.2">I/O Hardware</h3>
+
+**Port**：A <font color='red'>connection point</font> between I/O devices and the host
+
+- e.g. USB ports
+
+**Bus**：A set of <font color='red'>wires</font> and a well-defined <font color='red'>protocol</font> that specifies messages sent over the wire
+
+- e.g. PCI bus
+
+**Controller**：A collection of electronics that can <font color='red'>operate</font> a port, a bus, or a device
+
+- A controller could have its own processor, memory, etc.
+
+<h3 id="1.14.3">I/O Methods</h3>
+
+Basic I/O Method (Port-Mapped I/O)
+
+- Each I/O port (device) is identified by a unique <font color='red'>port address</font>
+- Each I/O port consists of <font color='red'>four registers</font> (1 ~ 4 Bytes)
+  - **Data-in register**: read by the host to get input
+  - **Data-out register**: written by the host to send output
+  - **Status register**: read by the host to check I/O status
+  - **Control register**: written by the host to control the device
+- Program interact with an I/O port through <font color='red'>special I/O instructions (different from memory access)</font>
+
+Device I/O Port Locations on PCs
+
+![img276](./image/NTHU_OS/img276.PNG)
+
+I/O Methods Categorization
+
+- Depending on how to <font color='red'>address</font> a device：
+  - **Port-mapped I/O**
+    - Use different address space from memory
+    - Access by special I/O instruction (e.g. IN, OUT)
+  - **Memory-mapped I/O**
+    - Reserve specific memory space for device
+    - Access by standard data-transfer instruction (e.g. MOV)
+    - 優點：more efficient for large memory I/O (e.g. graphic card)
+    - 缺點：Vulnerable to accidental modification, error
+- Depending on how to <font color='red'>interact</font> with a device：
+  - **Poll (busy-waiting)**：processor periodically check status register of a device
+  - **Interrupt**：device notify processor of its completion
+- Depending on who to <font color='red'>control</font> the transfer：
+  - **Programmed I/O**：transfer controlled by <font color='red'>CPU</font>
+  - **Direct memory access (DMA) I/O**：controlled by <font color='red'>DMA controller</font> (a special purpose controller)
+    - Design for <font color='red'>large data transfer</font>
+    - Commonly used with <font color='red'>memory-mapped I/O</font> and <font color='red'>interrupt</font> I/O method
+
+Six-Step Process to Perform DMA (Direct Memory Access)
+
+![img277](./image/NTHU_OS/img277.PNG)
+
+<h3 id="1.14.4">Kernel I/O Subsystem</h3>
+
+I/O Subsystem
+
+- **I/O Scheduling** - improve system performance by ordering the jobs in I/O queue
+  - e.g. disk I/O order scheduling
+- **Buffering** - store data in memory while transferring between I/O devices
+  - <font color='red'>Speed mismatch</font> between devices
+  - Devices with <font color='red'>different data-transfer sizes</font>
+  - Support copy semantics
+- **Caching** - fast memory that holds copies of data
+  - Always just a copy
+  - Key to <font color='red'>performance</font>
+- **Spooling** - holds output for a <font color='red'>device</font>
+  - e.g. printing (cannot accept interleaved file)
+- **Error handling** - when I/O error happens
+  - e.g. SCSI devices returns error information
+- **I/O protection**
+  - Privileged instructions
+
+Blocking and Non-blocking I/O
+
+- Blocking - process suspended until I/O completed
+  - Easy to use and understand
+  - Insufficient for some needs
+  - Use for **synchronous** communication & I/O
+- Non-blocking
+  - Implemented via <font color='red'>multi-threading</font>
+  - Returns quickly with count of bytes read or written
+  - Use for **asynchronous** communication & I/O
+
+A Kernel I/O Structure
+
+- **Device drivers**：a uniform device-access <font color='red'>interface to the I/O subsystem</font>; hide the differences among device controllers from the I/O sub-system of OS
+
+    ![img278](./image/NTHU_OS/img278.PNG)
+
+I/O Device Class
+
+![img279](./image/NTHU_OS/img279.PNG)
+
+Block & Char Devices
+
+![img280](./image/NTHU_OS/img280.PNG)
+
+Network Devices
+
+![img281](./image/NTHU_OS/img281.PNG)
+
+<h3 id="1.14.5">Performance</h3>
+
+I/O is a major factor in <font color='red'>system</font> performance
+
+- It places heavy demands on the CPU to <font color='red'>execute device driver code</font>
+- The resulting <font color='red'>context switches</font> stress the CPU and its hardware caches
+- I/O loads down the memory bus during <font color='red'>data copy</font> between controllers and physical memory
+- <font color='red'>Interrupt handling</font> is a relatively expensive task
+  - Busy-waiting could be more efficient than interrupt-driven <font color='red'>if I/O time is small</font>
+
+Improving performance
+
+- Reduce <font color='red'>number of context switches</font>
+- Reduce <font color='red'>data copying</font>
+- Reduce <font color='red'>interrupts</font> by using large transfers, smart controllers, polling
+- Use <font color='red'>DMA</font>
+- Balance CPU, memory, bus, and I/O performance for highest throughput
