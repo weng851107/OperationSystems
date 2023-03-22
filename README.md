@@ -172,6 +172,26 @@ MMU 怎麼分辨每個程序獨立頁表的不同
    - 緩衝區池：使用緩衝區池將多個相似大小的需求合併在同一記憶體區域內，以減少內部碎片的產生。
    - 動態分配策略：在可能的情況下，使用動態分配策略，根據程序的需求動態調整分配的內存大小，以減少內部碎片。
 
+<h2 id="0.3">Reentrant code（可重入代碼）</h2>
+
+"Reentrant code"（可重入代碼）是指一種可以被多個程序或線程同時調用並且能夠正確運行的程式碼。可重入代碼的特點是，它不會修改全局或靜態數據，也不依賴於一些非可重入的外部資源。這使得可重入代碼在同步或並行環境中能夠被安全地共享和執行，不會導致競爭條件或數據破壞。
+
+為了使代碼可重入，開發者需要遵循以下原則：
+
+1. 避免使用全局變量和靜態變量，因為它們在多個實例之間是共享的。
+2. 避免對共享資源的讀寫操作，除非使用了適當的同步機制。
+3. 使用局部變量，因為它們對於每個函數調用都是唯一的。
+4. 使用不可變數據結構，這樣數據不會被多個實例共享。
+5. 如果需要調用其他函數，確保這些函數也是可重入的。
+
+可重入代碼在多線程程式設計中尤為重要，因為它有助於避免競爭條件和數據不一致問題，提高程序的可靠性。
+
+
+
+
+
+
+
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
 https://ocw.nthu.edu.tw/ocw/index.php?page=course&cid=141
@@ -1972,7 +1992,7 @@ Logical View of Segmentation
 Segmentation Table
 
 - Logical address：(seg#, offset)
-  - Offset has the SAME lemgth as physical address
+  - Offset has the SAME length as physical address
 - <font color='red'>Segmentation table</font> - maps two-dimensional physical addresses; each table entry has：
   - *Base(4 bytes)*: the start physical address
   - *Limit(4 bytes)*: the length of the segment
@@ -1993,7 +2013,7 @@ Segmentation Hardware
 Address Translation Comparison
 
 - Segment
-  - Table entry: (segment base address, limt)
+  - Table entry: (segment base address, limit)
   - Segment base address can be arbitrary
   - The length of "offset" is the same as the physical memory size
 - Page
@@ -2077,8 +2097,8 @@ Why we don't want to run a program that is entirely in memory
 
 - Many code for handling unusual errors or conditions
 - Certain program routines or features are rarely used
-- The same libray code used by many programs
-- Arra, lists and tables allocated but not used
+- The same library code used by many programs
+- Array, lists and tables allocated but not used
 
     > <font color='red'>We want better memory utilization</font>
 
@@ -2519,7 +2539,7 @@ Many-to-One
 - <font color='red'>Thread management is done in user space, so it is efficient</font>
 - 缺點：
   - The entire process will block if a thread makes a blocking system call
-  - Only one thread can access the kernel at atime, <font color='red'>multiple threads are unable to run in parallel on multiprocessors</font>
+  - Only one thread can access the kernel at a time, <font color='red'>multiple threads are unable to run in parallel on multiprocessors</font>
 
 One-to-One
 
