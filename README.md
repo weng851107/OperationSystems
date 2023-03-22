@@ -9,6 +9,8 @@ If there is related infringement or violation of related regulations, please con
 - [Note](#0)
   - [內存管理單元（Memory Management Unit，MMU）](#0.1)
   - [記憶體碎片（Memory Fragmentation）](#0.2)
+  - [Reentrant code（可重入代碼）](#0.3)
+  - [Port（端口）、Bus（匯流排）和 Controller（控制器）](#0.4)
 - [清大資工 周志遠 - 作業系統](#1)
   - [Term Explaination](#1.0)
   - [Chapter0: Historical Prospective](#1.1)
@@ -186,11 +188,15 @@ MMU 怎麼分辨每個程序獨立頁表的不同
 
 可重入代碼在多線程程式設計中尤為重要，因為它有助於避免競爭條件和數據不一致問題，提高程序的可靠性。
 
+<h2 id="0.4">Port（端口）、Bus（匯流排）和 Controller（控制器）</h2>
 
+在計算機硬體中，Port（端口）、Bus（匯流排）和 Controller（控制器）是三個相關的概念，它們共同構成了設備之間的連接和通信機制。
 
+1. Port（端口）：端口是一個用於連接和通信的物理或邏輯接口。它允許外部設備（如鍵盤、鼠標、顯示器等）或內部設備（如記憶體、硬碟等）與計算機系統建立連接。端口可以是物理的，例如 USB 端口、HDMI 端口等，也可以是邏輯的，例如網絡端口。
+2. Bus（匯流排）：匯流排是計算機硬體中的一種通信系統，它允許多個設備共享一條數據通道。匯流排通常由一組平行的導線組成，用於傳輸數據、地址和控制信號。匯流排的主要目的是在設備和計算機系統之間傳輸數據，並降低連接和通信的複雜性。常見的匯流排有 PCI、PCI Express、AGP 等。
+3. Controller（控制器）：控制器是一個專門的硬體元件，用於管理和協調連接到端口和匯流排的設備的通信。控制器通常是一個微處理器或微控制器，負責執行特定的通信協議和處理數據傳輸。控制器可以集成在主機板上，也可以作為獨立的擴展卡存在。
 
-
-
+- Port、Bus 和 Controller 之間的關係可以簡單概括為：端口提供了設備之間連接的物理或邏輯接口，匯流排負責在設備之間傳輸數據，而控制器則協調和管理這些設備之間的通信。在計算機硬體中，這三者共同確保了各種設備能夠有效地連接和互動。
 
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
@@ -2683,7 +2689,7 @@ Thread Pools
 
 - The idea of multiprogramming：
   - Keep several processes in memory. Every time one process has to wait, another process takes over the use of the CPU
-- <font color='red'>CPU-I/O burst cycle</font>：Process execution consists of a cycle of CPU execution anD I/O wait (i.e. <font color='red'>CPU burst</font> and <font color='red'>I/O burst</font>)
+- <font color='red'>CPU-I/O burst cycle</font>：Process execution consists of a cycle of CPU execution and I/O wait (i.e. <font color='red'>CPU burst</font> and <font color='red'>I/O burst</font>)
   - <font color='red'>Generally, there is a large number of short CPU bursts, and a small number of long CPU bursts</font>
   - A <font color='red'>I/O-bound program</font> would typically has many very short CPU bursts
   - A <font color='red'>CPU-bound program</font> might have a few long CPU bursts
@@ -3938,7 +3944,7 @@ Device categories
 
 - Storage device: disks, tapes
 - Transmission devices: network cards, modems
-- Human-interface devices: heyboard, screen, mouse
+- Human-interface devices: keyboard, screen, mouse
 - Specialized devices: joystick, touchpad
 
 <h3 id="1.14.2">I/O Hardware</h3>
