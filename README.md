@@ -198,6 +198,223 @@ MMU 怎麼分辨每個程序獨立頁表的不同
 
 - Port、Bus 和 Controller 之間的關係可以簡單概括為：端口提供了設備之間連接的物理或邏輯接口，匯流排負責在設備之間傳輸數據，而控制器則協調和管理這些設備之間的通信。在計算機硬體中，這三者共同確保了各種設備能夠有效地連接和互動。
 
+<h2 id="0.5">中斷（Interrupt）</h2>
+
+在計算機系統中，中斷（Interrupt）是一種重要的通信機制，用於處理器（CPU）和外部設備或其他硬件組件之間的實時事件。當一個設備需要處理器的注意時，它會發出一個中斷信號。處理器在完成當前任務後會響應這個信號，暫停當前的執行流程，並轉向執行與中斷相關的代碼。這使得處理器能夠高效地響應和處理來自不同設備的事件。
+
+以下是有關操作系統中斷的一些關鍵概念：
+
+1. 中斷類型：
+
+   - 硬件中斷：由外部設備或硬件組件產生的中斷，例如I/O設備完成數據傳輸或定時器到達預定時間。
+   - 軟件中斷：由程序或操作系統產生的中斷，通常用於實現系統調用（system call）或處理異常。
+
+2. 中斷處理：
+
+   - 當處理器接收到中斷信號時，它會保存當前的執行上下文（如寄存器值和程序計數器），然後跳轉到一個特定的內存地址，稱為中斷向量表（Interrupt Vector Table, IVT）。該表包含與不同中斷類型關聯的處理程序地址。
+   - 中斷處理程序（Interrupt Service Routine, ISR）是用於處理特定中斷的代碼。處理器在執行ISR後會恢復之前保存的上下文並返回到被中斷的程序。
+
+3. 中斷屏蔽和優先級：
+
+   - 為了防止中斷處理程序被其他中斷打斷，處理器可以暫時屏蔽中斷。這通常在處理關鍵任務或其他高優先級中斷時發生。
+   - 當多個中斷同時發生時，處理器可以根據它們的優先級來確定哪個中斷應該首先處理。優先級可以根據硬件設計或操作系統配置進行設置。
+
+4. 系統調用：
+
+   - 系統調用是一種特殊的軟件中斷，用於用戶程序向操作系統請求服務，如文件操作、內存分配或進程管理。通過系統調用，操作系統可以在安全的環境中為用戶程序提供服務，防止用戶程序直接訪問關鍵系統資源。
+
+- 中斷在操作系統中起著關鍵作用，使得處理器能夠高效地管理和協調不同設備和程序的需求。通過中斷機制，操作系統可以實現實時響應、任務調度和資源管理等核心功能。
+
+ISR（中斷服務例程，Interrupt Service Routine）：
+
+- ISR（中斷服務例程，Interrupt Service Routine）是指處理特定中斷的實際代碼。
+- 當處理器收到一個中斷信號時，它會根據中斷向量表（Interrupt Vector Table, IVT）找到相應的ISR地址，並跳轉到該地址執行中斷處理程序。 ISR負責處理與該中斷相關的任務，例如讀取設備數據、清除設備錯誤或執行系統調用等操作。
+- 一旦ISR完成中斷處理任務，處理器會恢復之前保存的執行上下文（如寄存器值和程序計數器），然後返回到被中斷的程序繼續執行。這樣，中斷機制使得處理器能夠及時響應外部設備或系統事件，同時保持對用戶程序的執行控制。
+
+每個設備通常都有一個與之相關的ISR，這個ISR負責處理來自該設備的中斷。設備驅動程序開發者會為特定設備編寫對應的ISR。當設備需要處理器的注意時，它會發出中斷信號。處理器會根據中斷向量表找到與該設備中斷相關的ISR，然後執行相應的處理程序。
+
+設備的ISR通常包含以下功能：
+
+1. 識別中斷來源：ISR需要確定引發中斷的設備，以便正確處理中斷。
+2. 讀取設備狀態和數據：ISR通常會讀取設備的狀態寄存器或數據緩衝區，以了解中斷的詳細信息或獲取設備傳輸的數據。
+3. 處理中斷事件：ISR會根據中斷類型執行相應的操作，如清除設備錯誤、更新系統狀態或將數據傳遞給其他系統組件。
+4. 清除中斷標誌：在完成中斷處理後，ISR需要清除設備的中斷標誌，以便設備可以發送新的中斷信號。
+5. 結束中斷：最後，ISR會通知處理器中斷處理已完成，處理器可以恢復執行被中斷的程序。
+
+- 通過設備特定的ISR，操作系統可以實現對各種設備的實時響應和管理，從而提高系統的性能和可靠性。
+
+當處理器收到中斷信號後，它會根據中斷類型查找中斷向量表（Interrupt Vector Table, IVT）中的相應條目，以確定與該中斷相關的ISR（中斷服務例程）的地址。中斷向量表是一個預先定義的內存區域，其中包含不同類型中斷的ISR地址。
+
+以下是處理器在收到中斷信號後如何轉跳到對應ISR的大致步驟：
+
+1. 保存當前執行上下文：處理器首先保存當前執行上下文，包括程序計數器（PC）、寄存器值和其他相關狀態。這樣處理器在執行ISR完成後可以恢復被中斷的程序。
+2. 確定中斷類型：處理器需要確定收到的中斷信號對應的中斷類型。這可以是硬件中斷（例如I/O設備完成數據傳輸）或軟件中斷（例如係統調用）。
+3. 查找中斷向量表：處理器會根據中斷類型在中斷向量表中查找相應的條目。這個條目包含了與該中斷相關的ISR的地址。
+4. 轉跳到ISR：處理器將程序計數器（PC）設置為在中斷向量表中找到的ISR地址，然後開始執行ISR。
+5. 執行ISR：處理器執行與中斷相關的ISR，以處理中斷事件。這可能包括讀取設備數據、處理系統調用或執行其他與中斷相關的任務。
+6. 恢復執行上下文：在ISR執行完成後，處理器會恢復之前保存的執行上下文（如寄存器值和程序計數器），然後返回到被中斷的程序繼續執行。
+
+- 這種中斷處理機制使得處理器能夠實時響應和處理來自不同設備或系統事件的中斷，同時保持對用戶程序的執行控制。在大多數現代處理器和操作系統中，這個過程都是自動完成的，不需要程序員顯式地處理中斷信號和中斷向量表。然而，在開發設備驅動程序或操作系統內核時，程序員可能需要編寫和配置ISR以處理特定設備的中斷。
+
+一個使用 Arduino 的簡單範例：使用外部中斷來檢測按鈕按下事件
+
+- 展示了如何使用 MCU 的中斷處理機制來實現對按鈕按下事件的實時響應，而無需在主循環中不斷地檢查按鈕狀態
+
+    ```cpp
+    // 定義連接到按鈕的引腳
+    const int buttonPin = 2;
+    // 定義 LED 燈的引腳
+    const int ledPin = 13;
+
+    // 創建外部中斷的回調函數
+    void buttonPressed_ISR() {
+    // 翻轉 LED 燈的狀態
+    digitalWrite(ledPin, !digitalRead(ledPin));
+    }
+
+    void setup() {
+    // 設置按鈕引腳為輸入並啟用內部上拉電阻
+    pinMode(buttonPin, INPUT_PULLUP);
+    // 設置 LED 燈引腳為輸出
+    pinMode(ledPin, OUTPUT);
+
+    // 配置外部中斷，當按鈕按下（引腳從高變低）時觸發
+    attachInterrupt(digitalPinToInterrupt(buttonPin), buttonPressed_ISR, FALLING);
+    }
+
+    void loop() {
+    // 主循環不需要執行任何操作，因為按鈕按下事件將由外部中斷處理
+    }
+    ```
+
+- 當按鈕按下時，引腳從高變低，觸發外部中斷。
+- MCU 將執行名為 buttonPressed_ISR 的中斷服務程序，該函數會翻轉 LED 燈的狀態。
+- 在 setup() 函數中，通過調用 attachInterrupt() 函數配置外部中斷，設置觸發條件為 FALLING（表示引腳從高變低）。
+- loop() 函數為主循環，此範例中無需執行任何操作。
+
+一個在 Keil C 環境下使用 STM32 微控制器的範例，此範例將展示如何使用 EXTI 外部中斷來檢測按鈕按下事件並切換 LED 狀態：
+
+- 首先，確保已經安裝了 STM32 相關的庫文件和 Keil MDK。在本範例中，我們將使用 STM32F103C8T6 微控制器。
+
+```C
+#include "stm32f10x.h"                  // Device header
+#include "stm32f10x_gpio.h"             // GPIO header
+#include "stm32f10x_rcc.h"              // RCC header
+#include "stm32f10x_exti.h"             // EXTI header
+#include "misc.h"                       // NVIC header
+
+// 中斷處理函數原型
+void EXTI0_IRQHandler(void);
+
+int main(void) {
+  // 啟用 GPIOA 和 GPIOC 時鐘
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOC, ENABLE);
+  
+  // 初始化 GPIOC.13 作為 LED 輸出
+  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitStruct.GPIO_Pin = GPIO_Pin_13;
+  GPIO_InitStruct.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(GPIOC, &GPIO_InitStruct);
+  
+  // 初始化 GPIOA.0 作為按鈕輸入
+  GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0;
+  GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IPU; // 配置為輸入並啟用內部上拉電阻
+  GPIO_Init(GPIOA, &GPIO_InitStruct);
+  
+  // 配置 EXTI 中斷
+  EXTI_InitTypeDef EXTI_InitStruct;
+  EXTI_InitStruct.EXTI_Line = EXTI_Line0;
+  EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling;
+  EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStruct);
+  
+  // 啟用 NVIC
+  NVIC_InitTypeDef NVIC_InitStruct;
+  NVIC_InitStruct.NVIC_IRQChannel = EXTI0_IRQn;
+  NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStruct);
+  
+  while (1) {
+    // 主循環無需執行任何操作，因為按鈕事件將由 EXTI 中斷處理
+  }
+}
+
+// EXTI0 中斷處理函數
+void EXTI0_IRQHandler(void) {
+  // 確保 EXTI0 中斷已觸發
+  if (EXTI_GetITStatus(EXTI_Line0) != RESET) {
+    // 翻轉 LED 狀態
+    GPIOC->ODR ^= GPIO_Pin_13;
+    
+    // 清除 EXTI0 中斷標誌
+    EXTI_ClearITPendingBit(EXTI_Line0);
+  }
+}
+```
+
+- 當按鈕按下時（GPIOA.0引腳從高變低），將觸發 EXTI0 外部中斷。
+- MCU 將執行名為 EXTI0_IRQHandler 的中斷服務程序，該函數會翻轉 LED（GPIOC.13）的狀態。
+- 在 main() 函數中，
+  - 配置 GPIOA.0 作為按鈕輸入（並啟用內部上拉電阻）
+  - 配置 GPIOC.13 作為 LED 輸出。
+  - 配置 EXTI 中斷，設置觸發條件為 EXTI_Trigger_Falling（表示引腳從高變低）。
+  - 使用 NVIC（巢狀向量中斷控制器）來配置中斷優先級。在這個範例中，我們將優先級設為 0（最高）。
+  - 主循環（while(1)）中無需執行任何操作，因為按鈕按下事件將由 EXTI 中斷處理。
+- 在 EXTI0_IRQHandler() 中斷處理函數中，我們首先確保 EXTI0 中斷已觸發。接著，翻轉 LED 狀態並清除 EXTI0 中斷標誌，以確保下一次中斷能夠正常觸發
+
+在 STM32 微控制器中，中斷向量表（Interrupt Vector Table）是用來定義中斷處理函數的地址的。該表在啟動時由啟動代碼（startup code）設置，通常位於專門的 flash 記憶體區域。在 STM32 的標準庫（如 CMSIS 或 HAL）中，會為每個中斷源提供一個預設的中斷處理函數名稱。
+
+對於 EXTI0 中斷來說，該預設的中斷處理函數名稱為 EXTI0_IRQHandler。當你在代碼中定義該函數時，底層庫會將其地址分配給對應的中斷向量。因此，當 EXTI0 中斷發生時，MCU 會自動跳轉到 EXTI0_IRQHandler 並執行該函數。
+
+在一些情況下，你可能需要修改啟動代碼（如在 Keil 中的 startup_stm32f10x_xx.s 文件）以自定義中斷處理函數名稱。然而，在本範例中，我們使用的標準庫已經為我們處理了這些細節，因此只需定義具有正確名稱的函數即可。
+
+以下是一個自定義中斷處理函數的範例，我們將在 STM32F103C8T6 微控制器上使用 Keil C 和 CMSIS 標準庫。這個範例將展示如何修改啟動代碼以使用自定義的中斷處理函數名稱。
+
+1. 首先，在你的專案中找到 startup_stm32f10x_xx.s 文件（具體名稱可能因型號而異），並將其打開。找到 EXTI0 中斷處理函數的定義，如下所示：
+
+    ```asm
+    ; ...
+    DCD     EXTI0_IRQHandler          ; EXTI Line0
+    ; ...
+    ```
+
+2. 將其修改為自定義的中斷處理函數名稱，例如 My_EXTI0_IRQHandler：
+
+    ```asm
+    ; ...
+    DCD     My_EXTI0_IRQHandler       ; EXTI Line0
+    ; ...
+    ```
+
+3. 接下來，在你的 C 程式碼中，定義具有相同名稱的中斷處理函數，例如：
+
+    ```C
+    #include "stm32f10x.h"                  // Device header
+    #include "stm32f10x_gpio.h"             // GPIO header
+    #include "stm32f10x_rcc.h"              // RCC header
+    #include "stm32f10x_exti.h"             // EXTI header
+    #include "misc.h"                       // NVIC header
+
+    // 自定義中斷處理函數原型
+    void My_EXTI0_IRQHandler(void);
+
+    int main(void) {
+    // ...（與先前的範例相同）
+    }
+
+    // 自定義 EXTI0 中斷處理函數
+    void My_EXTI0_IRQHandler(void) {
+    // ...（與先前的範例相同）
+    }
+    ```
+
+- 這樣一來，當 EXTI0 中斷觸發時，MCU 將執行名為 My_EXTI0_IRQHandler 的自定義中斷處理函數。這樣可以讓你根據需要為中斷處理函數取一個更具描述性或符合專案風格的名稱。然而，需要注意的是，修改啟動代碼可能會使未來的更新和維護變得更加困難，因此應謹慎使用。
+
+
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
 https://ocw.nthu.edu.tw/ocw/index.php?page=course&cid=141
