@@ -3386,13 +3386,16 @@ Hardware Support
 
 - The CS problem occurs because the modification of a shared variable may be <font color='red'>interrupted
 </font>
+
 - *If disable interrupts when in CS...*
   - not feasible in multiprocessor machine
   - clock interrupts cannot fire in any machine
 - HW support solution: <font color='red'>atomic instructions
 </font>
+
   - atomic: <font color='red'>as one uninterruptible unit
 </font>
+
   - examples: TestAndSet(var), Swap(a, b)
 
 Atomic TestAndSet()
