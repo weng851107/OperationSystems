@@ -766,6 +766,8 @@ Still exists in today's world
   - *Memory management* - the system must allocate the memory to several jobs
   - *CPU scheduling* - the system must choose among several jobs ready to run
   - *I/O system* - I/O routine supplied by the system, allocation of devices
+    - I/O例程（I/O routine）：這是操作系統提供的一組函數和程序，用於控制和管理計算機系統中的輸入/輸出操作。I/O例程為應用程序提供了一個抽象層，使應用程序無需關心底層硬體細節，只需通過標準化的接口進行讀寫操作。這使得應用程序開發變得更簡單，同時也確保了對硬體資源的高效管理。
+    - 設備分配（allocation of devices）：這是操作系統在運行過程中為應用程序分配和管理硬體設備資源的過程。操作系統負責跟踪可用的硬體設備（如磁盤、打印機、網絡接口等），並根據應用程序的需求將這些設備分配給不同的程序。操作系統還會確保在程序之間公平地共享硬體資源，以避免資源衝突和提高整體系統性能。
 
 **Mainframe - Time-sharing System**
 
