@@ -11,6 +11,8 @@ If there is related infringement or violation of related regulations, please con
   - [記憶體碎片（Memory Fragmentation）](#0.2)
   - [Reentrant code（可重入代碼）](#0.3)
   - [Port（端口）、Bus（匯流排）和 Controller（控制器）](#0.4)
+  - [中斷（Interrupt）](#0.5)
+  - [鎖（Lock）, 信號量（Semaphore）和 條件變量（Condition Variables）](#0.6)
 - [清大資工 周志遠 - 作業系統](#1)
   - [Term Explaination](#1.0)
   - [Chapter0: Historical Prospective](#1.1)
@@ -413,6 +415,170 @@ void EXTI0_IRQHandler(void) {
     ```
 
 - 這樣一來，當 EXTI0 中斷觸發時，MCU 將執行名為 My_EXTI0_IRQHandler 的自定義中斷處理函數。這樣可以讓你根據需要為中斷處理函數取一個更具描述性或符合專案風格的名稱。然而，需要注意的是，修改啟動代碼可能會使未來的更新和維護變得更加困難，因此應謹慎使用。
+
+<h2 id="0.6">鎖（Lock）, 信號量（Semaphore）和 條件變量（Condition Variables）</h2>
+
+同步原語（Synchronization Primitives）指的是一組用於在多執行緒或多進程環境中實現協同作業的基本構建塊。同步原語可以用來確保對共享資源的訪問是有序且互斥的，以避免競爭條件（race conditions）和數據不一致的問題。
+
+同步原語在不同的語境和領域中可能有不同的名稱，例如：
+
+1. 同步機制（Synchronization Mechanisms）：這個詞語強調的是同步原語在實現協同作業方面的功能。
+2. 同步對象（Synchronization Objects）：這個詞語強調的是同步原語作為一個對象，可以通過操作這些對象來實現執行緒間的同步。
+3. 同步工具（Synchronization Tools）：這個詞語強調的是同步原語作為一個工具，可以幫助開發者解決多執行緒或多進程環境中的同步問題。
+
+- 雖然這些詞語在不同的情境下可能有些許差異，但它們都指的是用於實現多執行緒或多進程間同步的基本構建塊。這些構建塊包括鎖（Locks）、信號量（Semaphores）、條件變量（Condition Variables）等。
+
+鎖（Locks）、信號量（Semaphores）和條件變量（Condition Variables）是三種用於解決多執行緒或多進程環境中同步問題的同步原語。它們可以協助確保對共享資源的訪問是有序且互斥的，以避免競爭條件（race conditions）和數據不一致的問題。
+
+1. 鎖（Locks）：鎖是一種簡單的同步原語，用於確保對共享資源的互斥訪問。它有兩種主要操作：加鎖（lock）和解鎖（unlock）。當一個執行緒獲得鎖時，其他執行緒需要等待，直到鎖被釋放。鎖的主要類型包括：
+
+   - 互斥鎖（Mutex）：互斥鎖是最常用的鎖類型，它確保同一時間只有一個執行緒可以訪問共享資源。互斥鎖可以是可重入的（reentrant），這意味著同一個執行緒可以多次獲得同一個鎖，而不會導致死鎖。
+   - 讀寫鎖（Read-Write Lock）：讀寫鎖允許多個執行線程同時讀取共享資源，但在寫入時需要互斥訪問。這樣可以在讀操作比寫操作更頻繁的場景下提高性能。
+
+    ```C
+    #include <stdio.h>
+    #include <pthread.h>
+
+    pthread_mutex_t lock;
+    int counter = 0;
+
+    void* increment(void* arg) {
+        pthread_mutex_lock(&lock);
+        counter++;
+        printf("Counter: %d\n", counter);
+        pthread_mutex_unlock(&lock);
+
+        return NULL;
+    }
+
+    int main() {
+        pthread_t thread1, thread2;
+
+        pthread_mutex_init(&lock, NULL);
+
+        pthread_create(&thread1, NULL, increment, NULL);
+        pthread_create(&thread2, NULL, increment, NULL);
+
+        pthread_join(thread1, NULL);
+        pthread_join(thread2, NULL);
+
+        pthread_mutex_destroy(&lock);
+
+        return 0;
+    }
+    ```
+
+2. 信號量（Semaphores）：信號量是一個整數值，用於控制對共享資源的訪問次數，以及在多個執行緒之間進行信號通知。信號量有兩個主要操作：等待（wait）和發送（post）。等待操作將信號量減一，如果信號量變為負數，則執行緒將被阻塞。發送操作將信號量加一，以允許其他被阻塞的執行緒繼續訪問共享資源。信號量主要有兩種類型：
+
+   - 二元信號量（Binary Semaphore）：二元信號量的值只能為0或1，因此它可以用作簡單的鎖。當信號量的值為1時，表示資源可用；當信號量的值為0時，表示資源不可用。
+   - 計數信號量（Counting Semaphore）：計數信號量的值可以是任意非負整數，表示可用資源的數量。計數信號量可以用於控制對共享資源的訪問次數，以及實現生產者-消費者模型等同步問題。
+
+    ```C
+    #include <stdio.h>
+    #include <pthread.h>
+    #include <semaphore.h>
+
+    sem_t semaphore;
+    int counter = 0;
+
+    void* increment(void* arg) {
+        sem_wait(&semaphore);
+        counter++;
+        printf("Counter: %d\n", counter);
+        sem_post(&semaphore);
+
+        return NULL;
+    }
+
+    int main() {
+        pthread_t thread1, thread2;
+
+        sem_init(&semaphore, 0, 1);
+
+        pthread_create(&thread1, NULL, increment, NULL);
+        pthread_create(&thread2, NULL, increment, NULL);
+
+        pthread_join(thread1, NULL);
+        pthread_join(thread2, NULL);
+
+        sem_destroy(&semaphore);
+
+        return 0;
+    }
+    ```
+
+3. 條件變量（Condition Variables）：條件變量用於使執行緒在特定條件下進行等待。它們通常與互斥鎖（mutex）一起使用。條件變量的主要操作有：等待（wait）、通知單個執行緒（signal）和通知所有執行緒（broadcast）。
+
+   - 等待（wait）：當執行緒等待某個條件時，它將自己阻塞在條件變量上，並釋放與條件變量關聯的互斥鎖。這使得其他執行緒可以獲得互斥鎖，並在適當時機改變共享資源的狀態。
+   - 通知單個執行緒（signal）：當某個條件成立時，執行緒可以通過條件變量喚醒一個正在等待的執行緒。被喚醒的執行緒將再次獲得互斥鎖，並繼續執行。
+   - 通知所有執行緒（broadcast）：與通知單個執行緒類似，但通知所有執行緒會喚醒所有正在等待條件變量的執行緒。這在某些情況下可能導致更高的性能，但也可能引入更多的競爭。
+   - 條件變量主要用於實現生產者-消費者模型等同步問題。它們通常在以下情況下使用：
+     - 當共享資源需要在不同執行緒之間進行協同操作時，例如，當一個執行緒需要在另一個執行緒完成某個操作之後才能繼續執行。
+     - 當執行緒需要等待某個事件發生或某個條件成立時，例如，當消費者需要等待生產者生成新的資源時。
+
+    ```C
+    #include <stdio.h>
+    #include <pthread.h>
+    #include <unistd.h>
+
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    int ready = 0;
+
+    void* producer(void* arg) {
+        sleep(2);
+        pthread_mutex_lock(&lock);
+        ready = 1;
+        printf("Producer: set 'ready' to 1\n");
+        pthread_cond_signal(&cond);
+        pthread_mutex_unlock(&lock);
+
+        return NULL;
+    }
+
+    void* consumer(void* arg) {
+        pthread_mutex_lock(&lock);
+        while (!ready) {
+            printf("Consumer: waiting for 'ready'\n");
+            pthread_cond_wait(&cond, &lock);
+        }
+        printf("Consumer: 'ready' is now 1\n");
+        pthread_mutex_unlock(&lock);
+
+        return NULL;
+    }
+
+    int main() {
+        pthread_t prod, cons;
+
+        pthread_mutex_init(&lock, NULL);
+        pthread_cond_init(&cond, NULL);
+
+        pthread_create(&prod, NULL, producer, NULL);
+        pthread_create(&cons, NULL, consumer, NULL);
+
+        pthread_join(prod, NULL);
+        pthread_join(cons, NULL);
+
+        pthread_mutex_destroy(&lock);
+        pthread_cond_destroy(&cond);
+
+        return 0;
+    }
+    ```
+
+- 這些同步原語提供了在多執行緒和多進程環境中解決同步問題的基本機制。根據應用場景和需求，開發者可以選擇合適的同步原語來確保對共享資源的訪問是有序且互斥的，以避免競爭條件和數據不一致的問題。選擇合適的同步原語並正確地實現它們是實現高效並發程式的關鍵。
+
+在使用這些同步原語時，開發者需要注意避免一些常見的問題，如死鎖、活鎖和競爭條件。為了避免這些問題，開發者應該遵循以下幾點建議：
+
+1. 慎重選擇同步原語：根據應用的需求和特點選擇合適的同步原語。例如，對於簡單的互斥訪問，可以使用互斥鎖；對於控制資源訪問次數，可以使用信號量；對於複雜的協同操作，可以使用條件變量。
+2. 遵循一致的鎖定順序：在多個執行緒需要獲得多個鎖時，應該遵循一致的鎖定順序，以避免死鎖。例如，如果執行緒A需要先獲得鎖L1，然後獲得鎖L2，那麼執行緒B也應該先獲得鎖L1，然後獲得鎖L2。
+3. 避免長時間持有鎖：在執行緒持有鎖的期間，其他需要該鎖的執行緒將被阻塞。因此，應該儘量減少持有鎖的時間，以提高並發性能。
+4. 使用最小化同步區域：應該確保同步區域（需要保護的共享資源）盡可能小，以減少執行緒之間的競爭和阻塞。
+5. 限制共享資源的數量和訪問：在可能的情況下，可以考慮將共享資源分為多個獨立部分，或者限制對共享資源的訪問，以減少競爭和同步問題。
+
+
+
 
 
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
