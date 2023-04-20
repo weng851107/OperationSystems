@@ -13,6 +13,10 @@ If there is related infringement or violation of related regulations, please con
   - [Port（端口）、Bus（匯流排）和 Controller（控制器）](#0.4)
   - [中斷（Interrupt）](#0.5)
   - [鎖（Lock）, 信號量（Semaphore）和 條件變量（Condition Variables）](#0.6)
+  - [Concurrency（並發）和 Parallelism（並行）](#0.7)
+  - [輕量級進程（Light Weight Process，縮寫為 LWP）](#0.8)
+  - [CPU 調度器（CPU Scheduler）和調度器（Dispatcher）](#0.9)
+  - [what is the differences between user thread, kernel thread, and hardware thread?](#0.10)
 - [清大資工 周志遠 - 作業系統](#1)
   - [Term Explaination](#1.0)
   - [Chapter0: Historical Prospective](#1.1)
@@ -98,6 +102,8 @@ If there is related infringement or violation of related regulations, please con
     - [Performance](#1.14.5)
 
 <h1 id="0">Note</h1>
+
+https://hackmd.io/@frakw/S1hFU0Vdt
 
 <h2 id="0.1">內存管理單元（Memory Management Unit，MMU）</h2>
 
@@ -416,7 +422,119 @@ void EXTI0_IRQHandler(void) {
 
 - 這樣一來，當 EXTI0 中斷觸發時，MCU 將執行名為 My_EXTI0_IRQHandler 的自定義中斷處理函數。這樣可以讓你根據需要為中斷處理函數取一個更具描述性或符合專案風格的名稱。然而，需要注意的是，修改啟動代碼可能會使未來的更新和維護變得更加困難，因此應謹慎使用。
 
-<h2 id="0.6">鎖（Lock）, 信號量（Semaphore）和 條件變量（Condition Variables）</h2>
+<h2 id="0.6">Race Condition 以及 鎖（Lock）, 信號量（Semaphore）和 條件變量（Condition Variables）</h2>
+
+競態條件（Race Condition）是一種常見的同步問題，通常出現在多線程或多進程環境中。當兩個或<u>多個進程/線程在沒有適當同步的情況下同時訪問和操作共享數據時</u>，就可能出現競態條件。由於進程/線程的執行順序是不確定的，因此競態條件可能導致不可預知和不一致的結果。
+
+critical section problem：
+
+- critical section : 會動到與其他人share data的程式碼段落，簡稱CS
+- critical section protocol : 在執行到critical section之前與之後去做一些措施保證critical section執行期間不會被schedule out
+  - entry section
+  - exit section
+
+solution：
+
+- Mutual exclusion
+  - 假設兩個（以上） 的processes可以同時進出CS，找出其矛盾
+- Progress
+  - 沒有process在CS中，一個process要進去CS，一定可以進去
+  - 多個process要進CS，在有限的時間內做出決定
+- Bounded waiting
+  - 找出次數的上限
+
+peterson’s solution 為例：
+
+- 一種用於解決兩個進程之間的互斥問題的經典算法
+- 基於兩個共享變量（flag 和 turn）實現進程間的同步
+
+1. 進程 P0 和 P1 都需要進入它們各自的臨界區。在進入區中，進程會設置自己的 flag 為 True 並設置 turn 變量，表示輪到另一個進程
+2. 進程檢查另一個進程的 flag 和 turn，如果條件滿足，則等待；否則，進入臨界區
+
+    ```C
+    #include <stdio.h>
+    #include <stdbool.h>
+    #include <pthread.h>
+    #include <unistd.h>
+
+    // 兩個共享變量的初始值
+    bool flag[2] = {false, false};
+    int turn = 0;
+
+    // 進程 P0
+    void *process_0(void *arg) {
+        while (1) {
+            // 進入區
+            flag[0] = true;
+            turn = 1;
+            while (flag[1] && turn == 1) {}
+
+            // 臨界區
+            printf("Process 0 in critical section\n");
+            sleep(1);
+
+            // 離開區
+            flag[0] = false;
+
+            // 餘下區
+            printf("Process 0 in remainder section\n");
+            sleep(1);
+        }
+    }
+
+    // 進程 P1
+    void *process_1(void *arg) {
+        while (1) {
+            // 進入區
+            flag[1] = true;
+            turn = 0;
+            while (flag[0] && turn == 0) {}
+
+            // 臨界區
+            printf("Process 1 in critical section\n");
+            sleep(1);
+
+            // 離開區
+            flag[1] = false;
+
+            // 餘下區
+            printf("Process 1 in remainder section\n");
+            sleep(1);
+        }
+    }
+
+    int main() {
+        pthread_t p0, p1;
+
+        pthread_create(&p0, NULL, process_0, NULL);
+        pthread_create(&p1, NULL, process_1, NULL);
+
+        pthread_join(p0, NULL);
+        pthread_join(p1, NULL);
+
+        return 0;
+    }
+    ```
+
+---
+
+Synchronization Hardware (同步硬件)：是一種用於支持多個進程或線程之間同步的硬件機制。它的目的是確保對共享資源的訪問和操作在多個進程或線程之間是互斥的。
+
+1. Test-and-set（測試和設置）指令：
+
+   - Test-and-set 是一種原子操作，它用於測試一個變數的值，並根據結果設置新值。這個指令在一個不可中斷的操作中完成，以確保同步。這種方法通常用於實現互斥鎖。
+
+    ![img01](./image/Note/img01.PNG)
+
+2. Compare-and-swap（比較和交換）指令：
+
+   - Compare-and-swap 是一種原子操作，用於比較兩個變數的值，如果相等，則用新值替換其中一個變數。這個指令在一個不可中斷的操作中完成，以確保同步。這種方法通常用於實現鎖和其他同步原語。
+
+    ![img02](./image/Note/img02.PNG)
+
+Atomic variables : 確保寫入變數時不會被interrupt
+
+---
 
 同步原語（Synchronization Primitives）指的是一組用於在多執行緒或多進程環境中實現協同作業的基本構建塊。同步原語可以用來確保對共享資源的訪問是有序且互斥的，以避免競爭條件（race conditions）和數據不一致的問題。
 
@@ -468,6 +586,57 @@ void EXTI0_IRQHandler(void) {
     }
     ```
 
+   - 可重入鎖的工作原理是，它維護一個與擁有鎖的執行緒關聯的計數器。當一個執行緒首次獲得鎖時，計數器設置為 1。如果相同的執行緒再次獲得鎖，計數器增加 1。當該執行緒釋放鎖時，計數器減少 1。只有當計數器降至 0 時，鎖才會被真正釋放，並允許其他執行緒獲得鎖。
+
+    ```C
+    #include <stdio.h>
+    #include <pthread.h>
+    #include <unistd.h>
+
+    // 遞迴函數
+    void recursive_function(pthread_mutex_t *mutex, int depth) {
+        if (depth <= 0) {
+            return;
+        }
+
+        pthread_mutex_lock(mutex);
+        printf("Thread %ld acquired the lock, depth: %d\n", pthread_self(), depth);
+        recursive_function(mutex, depth - 1);
+        printf("Thread %ld releasing the lock, depth: %d\n", pthread_self(), depth);
+        pthread_mutex_unlock(mutex);
+    }
+
+    // 工作線程
+    void *worker(void *arg) {
+        pthread_mutex_t *mutex = (pthread_mutex_t *)arg;
+        recursive_function(mutex, 3);
+        return NULL;
+    }
+
+    int main() {
+        pthread_t t1, t2;
+        pthread_mutexattr_t mutexattr;
+        pthread_mutex_t mutex;
+
+        pthread_mutexattr_init(&mutexattr);
+        pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
+        pthread_mutex_init(&mutex, &mutexattr);
+
+        pthread_create(&t1, NULL, worker, &mutex);
+        pthread_create(&t2, NULL, worker, &mutex);
+
+        pthread_join(t1, NULL);
+        pthread_join(t2, NULL);
+
+        pthread_mutex_destroy(&mutex);
+        pthread_mutexattr_destroy(&mutexattr);
+
+        return 0;
+    }
+    ```
+
+   - 可重入互斥鎖主要用於解決單個進程中的執行緒同步問題。在多進程環境中，使用可重入互斥鎖可能會增加實現的複雜性。為了在多進程環境中實現同步，您可能需要考慮使用其他同步原語，如信號量（semaphores）或共享內存機制。
+
 2. 信號量（Semaphores）：信號量是一個整數值，用於控制對共享資源的訪問次數，以及在多個執行緒之間進行信號通知。信號量有兩個主要操作：等待（wait）和發送（post）。等待操作將信號量減一，如果信號量變為負數，則執行緒將被阻塞。發送操作將信號量加一，以允許其他被阻塞的執行緒繼續訪問共享資源。信號量主要有兩種類型：
 
    - 二元信號量（Binary Semaphore）：二元信號量的值只能為0或1，因此它可以用作簡單的鎖。當信號量的值為1時，表示資源可用；當信號量的值為0時，表示資源不可用。
@@ -507,7 +676,12 @@ void EXTI0_IRQHandler(void) {
     }
     ```
 
-3. 條件變量（Condition Variables）：條件變量用於使執行緒在特定條件下進行等待。它們通常與互斥鎖（mutex）一起使用。條件變量的主要操作有：等待（wait）、通知單個執行緒（signal）和通知所有執行緒（broadcast）。
+   - sem_t *sem：一個指向信號量類型（sem_t）的指針，它表示要初始化的信號量。
+   - int pshared：一個整數值，表示信號量的共享屬性。如果 pshared 為 0，則表示信號量僅在當前進程的線程之間共享。如果 pshared 非 0，則表示信號量可以在不同進程的線程之間共享。在您提供的示例中，pshared 為 0，表示信號量僅在當前進程內的線程之間共享。
+   - unsigned int value：一個無符號整數值，表示信號量的初始值。在您提供的示例中，value 為 1，表示信號量的初始值為 1。
+
+
+1. 條件變量（Condition Variables）：條件變量用於使執行緒在特定條件下進行等待。它們通常與互斥鎖（mutex）一起使用。條件變量的主要操作有：等待（wait）、通知單個執行緒（signal）和通知所有執行緒（broadcast）。
 
    - 等待（wait）：當執行緒等待某個條件時，它將自己阻塞在條件變量上，並釋放與條件變量關聯的互斥鎖。這使得其他執行緒可以獲得互斥鎖，並在適當時機改變共享資源的狀態。
    - 通知單個執行緒（signal）：當某個條件成立時，執行緒可以通過條件變量喚醒一個正在等待的執行緒。被喚醒的執行緒將再次獲得互斥鎖，並繼續執行。
@@ -517,51 +691,72 @@ void EXTI0_IRQHandler(void) {
      - 當執行緒需要等待某個事件發生或某個條件成立時，例如，當消費者需要等待生產者生成新的資源時。
 
     ```C
+    /*Bounded-Buffer Problem*/
     #include <stdio.h>
+    #include <stdlib.h>
     #include <pthread.h>
-    #include <unistd.h>
 
-    pthread_mutex_t lock;
-    pthread_cond_t cond;
-    int ready = 0;
+    #define BUFFER_SIZE 10
 
-    void* producer(void* arg) {
-        sleep(2);
-        pthread_mutex_lock(&lock);
-        ready = 1;
-        printf("Producer: set 'ready' to 1\n");
-        pthread_cond_signal(&cond);
-        pthread_mutex_unlock(&lock);
+    int buffer[BUFFER_SIZE];
+    int count = 0; // Number of items in the buffer
+    int in = 0; // Index for the next item to be produced
+    int out = 0; // Index for the next item to be consumed
+
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t not_empty = PTHREAD_COND_INITIALIZER;
+    pthread_cond_t not_full = PTHREAD_COND_INITIALIZER;
+
+    void *producer(void *arg) {
+        for (int i = 0; i < 100; i++) {
+            pthread_mutex_lock(&mutex);
+
+            while (count == BUFFER_SIZE) {
+                pthread_cond_wait(&not_full, &mutex);
+            }
+
+            buffer[in] = i;
+            in = (in + 1) % BUFFER_SIZE;
+            count++;
+
+            printf("Produced item %d\n", i);
+
+            pthread_cond_signal(&not_empty);
+            pthread_mutex_unlock(&mutex);
+        }
 
         return NULL;
     }
 
-    void* consumer(void* arg) {
-        pthread_mutex_lock(&lock);
-        while (!ready) {
-            printf("Consumer: waiting for 'ready'\n");
-            pthread_cond_wait(&cond, &lock);
+    void *consumer(void *arg) {
+        for (int i = 0; i < 100; i++) {
+            pthread_mutex_lock(&mutex);
+
+            while (count == 0) {
+                pthread_cond_wait(&not_empty, &mutex);
+            }
+
+            int item = buffer[out];
+            out = (out + 1) % BUFFER_SIZE;
+            count--;
+
+            printf("Consumed item %d\n", item);
+
+            pthread_cond_signal(&not_full);
+            pthread_mutex_unlock(&mutex);
         }
-        printf("Consumer: 'ready' is now 1\n");
-        pthread_mutex_unlock(&lock);
 
         return NULL;
     }
 
     int main() {
-        pthread_t prod, cons;
+        pthread_t producer_thread, consumer_thread;
 
-        pthread_mutex_init(&lock, NULL);
-        pthread_cond_init(&cond, NULL);
+        pthread_create(&producer_thread, NULL, producer, NULL);
+        pthread_create(&consumer_thread, NULL, consumer, NULL);
 
-        pthread_create(&prod, NULL, producer, NULL);
-        pthread_create(&cons, NULL, consumer, NULL);
-
-        pthread_join(prod, NULL);
-        pthread_join(cons, NULL);
-
-        pthread_mutex_destroy(&lock);
-        pthread_cond_destroy(&cond);
+        pthread_join(producer_thread, NULL);
+        pthread_join(consumer_thread, NULL);
 
         return 0;
     }
@@ -577,9 +772,191 @@ void EXTI0_IRQHandler(void) {
 4. 使用最小化同步區域：應該確保同步區域（需要保護的共享資源）盡可能小，以減少執行緒之間的競爭和阻塞。
 5. 限制共享資源的數量和訪問：在可能的情況下，可以考慮將共享資源分為多個獨立部分，或者限制對共享資源的訪問，以減少競爭和同步問題。
 
+---
+
+不用busy waiting的方法 -> 改用waiting queue(list指標)
+
+---
+
+死鎖（Deadlock）和饑餓（Starvation）：是兩種不同的同步問題，可能發生在多執行緒或多進程的系統中。這些問題可能會導致系統性能下降，甚至導致系統完全無法繼續運行
+
+1. 死鎖（Deadlock）：死鎖是一種特殊的同步問題，當多個執行緒（或進程）互相等待對方持有的資源，而導致彼此永遠無法繼續運行的情況。這通常發生在執行緒之間的資源競爭和不當的資源分配策略下。
+
+   - 死鎖一定具有以下四個特性：
+     - 互斥（Mutual Exclusion） - 一次只允許一個執行緒（或進程）訪問共享資源。
+     - 占有並等待（Hold and Wait） - 一個執行緒（或進程）在占有一些資源的同時，仍然等待其他執行緒（或進程）占有的資源。
+     - 不可抢占（No Preemption） - 資源不能在未完成使用的情況下被強制從一個執行緒（或進程）轉移到另一個執行緒（或進程）。
+     - 循環等待（Circular Wait） - 存在一個等待資源的執行緒（或進程）序列，其中每個執行緒（或進程）都在等待下一個執行緒（或進程）占有的資源，而最後一個執行緒（或進程）則等待第一個執行緒（或進程）占有的資源，形成一個循環。
+   - 解決死鎖的方法包括
+     - 死鎖預防（Deadlock Prevention） - 這種策略的目的是保證至少有一個死鎖條件永遠不會成立。通過破壞死鎖的四個必要條件之一（互斥、占有並等待、不可抢占和循環等待），可以達到防止死鎖的目的。例如，使用非阻塞同步原語（如 try-lock）可以避免占有並等待的條件，從而防止死鎖。
+     - 死鎖避免（Deadlock Avoidance） - 這種策略的目的是在資源分配過程中遵循某種策略，以避免死鎖的發生。通常需要對系統的資源需求有一定的預知。其中一個著名的算法是銀行家算法（Banker's Algorithm），它通過確保資源分配始終保持在安全狀態，避免死鎖的發生。
+     - 死鎖檢測（Deadlock Detection） - 這種策略的目的是在系統運行過程中定期檢測死鎖的存在。一旦檢測到死鎖，系統可以采取措施解除死鎖，例如撤銷某些進程或釋放資源。死鎖檢測通常涉及資源分配圖（Resource Allocation Graph）的檢查，尋找循環等待等現象。
+
+2. 饑餓（Starvation）：饑餓是一種情況，其中一個或多個執行緒無法獲得它們所需的資源，以便繼續執行。這通常是由於資源分配策略不公平或不合理導致的。在饑餓的情況下，某些執行緒可能會被無限期地阻塞，而無法取得所需資源。饑餓可能會導致系統性能下降，甚至導致某些功能無法正常運行。解決饑餓問題的方法包括使用公平的資源分配策略（例如，使用公平鎖（Fair Locks）或考慮執行緒的等待時間來分配資源）和確保資源的合理分配。
 
 
 
+<h2 id="0.7">Concurrency（並發）和 Parallelism（並行）</h2>
+
+Concurrency（並發）和Parallelism（並行）是計算機科學和軟件工程中兩個重要的概念，它們都涉及到多個任務的執行
+
+1. Concurrency（並發）:
+
+    並發是指同一時間段內處理多個任務的能力。在這種情況下，任務可以獨立執行，也可以與其他任務共享資源。並發主要關注的是如何在單個處理單元上有效地安排和組織多個任務，讓它們看起來像是同時在進行。這可以通過多路復用、時間片分配等技術實現。並發的主要目標是提高資源利用率和應對多任務環境中的各種挑戰。
+
+2. Parallelism（並行）:
+
+    並行是指同時執行多個任務的能力。在這種情況下，多個任務在不同的處理單元上同時執行，可以是多核處理器、多個CPU或分布式系統。並行的主要目標是提高計算速度和性能，通常適用於需要大量計算的問題，如科學計算、大數據分析等。並行可以通過多核處理器、多線程技術或分布式計算等技術實現。
+
+   - 數據並行（data parallelism）：
+
+        數據並行是一種將大量數據分解成較小的部分，並將這些部分分配給多個計算單元（例如多個CPU核心或GPU核心）進行同時處理的技術。在這種方法中，每個計算單元執行相同的操作，但在不同的數據子集上執行。這對於處理大量數據時具有很好的擴展性。
+
+   - 任務並行（task parallelism）：
+
+        任務並行則是一種將問題分解成互相獨立的子任務，並將這些子任務分配給多個計算單元進行同時處理的技術。在這種方法中，每個計算單元可能執行不同的操作或算法，並且可能需要協同工作以完成整個問題。
+
+   - 總之，數據並行著重於在多個計算單元上同時處理相同操作的不同數據部分，而任務並行則將不同的操作或子任務分配給多個計算單元，以提高計算效率。
+
+- Concurrency（並發）與Parallelism（並行）都涉及到多任務的處理，但它們有不同的目標和方法。並發關注的是在單個處理單元上有效地組織和管理多任務，而並行則是在多個處理單元上同時執行任務，以提高計算性能。在實際應用中，並發和並行通常會結合使用，以充分利用硬件資源並提高軟件效率。
+
+<h2 id="0.8">輕量級進程（Light Weight Process，縮寫為 LWP）</h2>
+
+輕量級進程（Light Weight Process，縮寫為 LWP）是一種在操作系統中實現多線程的機制。LWP 是一個獨立的執行單元，它包含了一個程序計數器、一組寄存器和一個堆棧。然而，與傳統的進程不同，LWP 在同一個進程內共享相同的地址空間、文件描述符和其他資源。這使得輕量級進程在創建和切換時相對節省資源，並具有更高的效率。
+
+輕量級進程主要用於實現多線程，通常與一個或多個內核級線程（Kernel Level Threads，KLT）相結合，這樣可以實現在多核或多處理器系統上的並行執行。
+
+---
+
+讓user thread以為LWP是一個virtual process
+
+每個user thread都會對應到一個LWP，LWP也只會對應到一個user thread，但可能對應到多個kernel thread
+
+LWP就是user thread在kernel的代理人
+
+<h2 id="0.9">CPU 調度器（CPU Scheduler）和調度器（Dispatcher）</h2>
+
+CPU scheduler(調度器) 主要負責決定哪個進程或線程應該獲得 CPU 使用權
+
+Dispatcher(調度器) 則負責在進程或線程之間實現上下文切換
+
+---
+
+CPU scheduler(調度器)：負責根據特定的調度策略和算法決定哪個進程或線程應該獲得 CPU 使用權。它會考慮諸如進程的優先級、等待時間、已執行時間等因素，以確保有效、公平和可擴展的系統性能。
+
+- 在ready queue中尋找下一個適合的process執行，雖然真正的最小執行單位是thread，但是存放的資訊還是在process裡，所以scheluder是選擇process而不是thread，process選完後才近一步選thread，thread再去選用哪個CPU來執行。
+
+preemptive vs non-preemptive：
+
+- preemptive : 執行到一半時可能因scheduler而被強制交出CPU使用權，有效率
+- non-preemptive : 會等到該process離開running state後才執行scheduler，running自己主動呼叫scheduler的情形就屬於non-preemptive，沒效率
+
+呼叫scheduler時機：在進程或線程創建、終止或阻塞等關鍵時刻運行，以確保 CPU 資源得到合理分配。
+
+- running state to waiting state (做IO) => non-preemptive
+- running to ready state (interrupt occurs、時間用光了) => preemptive
+- waiting to ready (IO完成)，比喻:填完表單的人可以讓櫃台決定要不要先服務你，而不用從頭開始排隊 => preemptive
+- running terminate (執行結束) => non-preemptive
+
+    ![img00](./image/Note/img00.PNG)
+
+- CPU scheduling decisions take place under the following four conditions:
+  - Process Arrival
+  - Process Termination
+  - I/O operation to complete
+  - Interruption
+
+dispatcher(調度器)：
+
+- 當 CPU 調度器選擇了下一個要執行的進程（或線程），調度器將控制權從當前運行的進程轉移到新選擇的進程。
+- 負責在多個進程或線程之間實現上下文切換。
+
+1. 保存當前進程（或線程）的上下文(context switch)：調度器首先保存當前正在運行的進程（或線程）的上下文信息。這包括程序計數器（PC）、寄存器內容、堆棧指針等。這些信息將存儲在進程控制塊（Process Control Block，PCB）或線程控制塊（Thread Control Block，TCB）中，以便日後恢復。
+2. 更新調度信息：調度器更新相關的調度數據結構，例如將當前運行的進程（或線程）標記為就緒狀態（ready），並將新選擇的進程（或線程）標記為運行狀態（running）。
+3. 加載新進程（或線程）的上下文：調度器從新選擇的進程（或線程）的 PCB 或 TCB 中讀取其上下文信息，然後將這些信息恢復到 CPU 中，包括程序計數器、寄存器內容、堆棧指針等。
+4. 轉移控制權：調度器將控制權轉移到新選擇的進程（或線程），讓其繼續執行。此時，CPU 開始執行新進程（或線程）的指令。
+
+調度延遲（Dispatch Latency）：
+
+- 是指操作系統在進程或線程調度過程中所需的時間。這段時間包括從 CPU 調度器選擇下一個要運行的進程（或線程）到實際執行該進程（或線程）之間的時間。換句話說，調度延遲是 CPU 從停止執行當前進程到開始執行新進程所需的時間。
+- 沒有人可以打斷dispatch
+
+scheduling criteria
+
+- CPU utilization : CPU越忙越好，榨乾時間
+- throughput : 單位時間處理越多process越好
+- turnaround time : 每個process從開始處理到結束的時間越短越好
+- waiting time : process在ready queue裡等待時間越短越好
+- response time : 從request到response的時間越短越好
+
+```
+First Come First Served(FCFS) : 依據進來的順序去執行，也就是直接拿ready queue的第一個element
+
+Shortest Job First (SJF)：但問題是還沒執行前都不知道burst time是多少，所以通常用預估的方式來決定burst time
+
+shortest remaining time first : FCFS與SJF結合
+
+Round Robin：每個process執行一段時間(time quantum q)就換人，一直輪流下去
+```
+
+Multiple Processor scheduling：
+
+- Homogeneous processors : processor之間的運算能力是一樣的
+- Asymmetric multiprocessing : 有一個專門負責scheduling的processor
+- Symmetric multiprocessing(SMP) : 現代OS常用，每個processor自己決定CPU scheduling
+  - 所有thread存在common ready queue
+  - 所以多個processor有可能選到同一個thread，產生大問題
+  - 因此現在改變為每個processor都有一個ready queue
+  - 每個thread會被分配到不同的ready queue裡
+- 把所有multiple processor放到同一個chip就叫multicore processor
+
+多線程多核系統（Multithreaded Multicore System）：是一種具有多個處理器核心（Processor Cores）並且支持多線程（Multithreading）的計算系統。在這種系統中，每個核心可以獨立執行一個或多個線程，從而在同一時刻執行多個任務。這種架構提高了計算性能，特別是在面對高度並行的工作負載時。
+
+1. 多核心：具有多個處理器核心，每個核心可以獨立地執行指令和任務。這意味著在同一時刻，多個任務可以被平行地執行，從而提高了系統性能。
+2. 多線程：支持多個線程同時執行。這可以使單個程序利用多個核心並行地執行，提高了程序的執行速度。多線程可以分為兩種類型：
+
+   - 軟件多線程（Software Multithreading）：操作系統層面的多線程，如 POSIX 線程（Pthreads）或 Windows 線程等。
+   - 硬件多線程（Hardware Multithreading）：處理器層面的多線程，如同時多線程（Simultaneous Multithreading，SMT）技術（例如，Intel 的超線程技術（Hyper-Threading））。
+
+3. 資源共享：多線程多核系統中的核心通常共享某些硬件資源，如快取（Cache）、內存控制器（Memory Controller）等。這可以提高資源利用率，但也可能導致競爭和性能下降。
+4. 並行性（Concurrency）：多線程多核系統可以在同一時刻執行多個任務，這提高了並行性。通過適當地設計並行算法和數據結構，程序可以更有效地利用多核硬件，提高性能。
+
+   - 一個core同時只能處理一個hardware thread，這是concurrency而非parallelism
+
+CPU preemptive and priority：
+
+- 作業系統通常會根據不同的優先級來處理中斷（interrupt）和進程調度。當一個中斷事件發生時，作業系統會評估該中斷的優先級，並決定是否需要立即處理。如果新的中斷具有更高的優先級，作業系統可能會擱置正在處理的中斷或進程，先處理這個高優先級的中斷。這意味著原來被搶占的進程可能在一次或多次中斷後再次被搶占。
+- 為了避免過度搶占導致的系統性能下降，作業系統通常會實現一些策略，以確保每個進程都能得到合理的 CPU 時間。例如，作業系統可以使用`時間片（time slice）`策略，確保每個進程至少獲得一定量的 CPU 時間，以免某些進程被長時間搶占而無法執行。
+
+<h2 id="0.10">what is the differences between user thread, kernel thread, and hardware thread?</h2>
+
+用戶線程、內核線程和硬件線程是計算系統中並發的不同層次的抽象和實現。以下是對每個概念的簡要描述和比較：
+
+1. 用戶線程：
+
+   - 用戶線程是由用戶級庫管理的線程，沒有操作系統內核的直接支持。
+   - 用戶線程由用戶空間庫（例如Pthreads或Java線程）調度和管理，而不是由內核調度和管理。
+   - 它們輕量級，創建和上下文切換的開銷比內核線程要低。
+   - 用戶線程可能無法充分利用多處理系統，因為內核不了解它們，無法在多個核心上調度它們。
+   - 如果用戶線程執行阻塞操作（例如I/O），可能會阻塞整個進程，因為內核不了解同一進程中的其他用戶線程。
+
+2. 內核線程：
+
+- 內核線程是由操作系統內核管理和調度的線程。
+- 它們由內核直接支持和調度，能更好地與系統資源和多處理器系統集成。
+- 內核線程的創建和上下文切換開銷比用戶線程高。
+- 它們可以充分利用多處理系統，因為內核可以在多個核心上調度它們。
+- 內核線程可以在不影響同一進程中的其他線程的情況下執行阻塞操作，因為內核了解所有線程並可以獨立調度它們。
+
+3. 硬件線程：
+
+- 硬件線程是最低層次的並發實現，由硬件本身提供，通常以單個處理器內的多個執行單元或核心的形式。
+- 硬件線程實現了真正的並行，因為多個線程可以在不同的核心上同時執行。
+- 操作系統可以在硬件線程上調度內核線程，以實現更好的並行性和性能。
+- 硬件線程可以有效地利用處理器資源，並減輕由於緩存未命中、分支錯誤預測或其他管道風險引起的延遲影響。
+- 現代處理器通常支持同時多線程（SMT），例如Intel的超線程技術，它允許在一個核心上運行多個硬件線程，通過共享一些執行資源。
+
+總之，用戶線程由用戶級庫管理，沒有內核的直接支持，而內核線程由操作系統內核管理和調度。硬件線程是並發實現的最低層次，由處理器本身提供，允許在硬件級別實現真正的並行。
 
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
