@@ -12,11 +12,12 @@ If there is related infringement or violation of related regulations, please con
   - [Reentrant code（可重入代碼）](#0.3)
   - [Port（端口）、Bus（匯流排）和 Controller（控制器）](#0.4)
   - [中斷（Interrupt）](#0.5)
-  - [鎖（Lock）, 信號量（Semaphore）和 條件變量（Condition Variables）](#0.6)
+  - [Race Condition 以及 鎖（Lock）, 信號量（Semaphore）和 條件變量（Condition Variables）](#0.6)
   - [Concurrency（並發）和 Parallelism（並行）](#0.7)
   - [輕量級進程（Light Weight Process，縮寫為 LWP）](#0.8)
   - [CPU 調度器（CPU Scheduler）和調度器（Dispatcher）](#0.9)
   - [what is the differences between user thread, kernel thread, and hardware thread?](#0.10)
+  - [Stack frame（堆疊框架），Stack pointer（堆疊指標），和 Frame pointer（框架指標）](#0.11)
 - [清大資工 周志遠 - 作業系統](#1)
   - [Term Explaination](#1.0)
   - [Chapter0: Historical Prospective](#1.1)
@@ -957,6 +958,34 @@ CPU preemptive and priority：
    - 現代處理器通常支持同時多線程（SMT），例如Intel的超線程技術，它允許在一個核心上運行多個硬件線程，通過共享一些執行資源。
 
 總之，用戶線程由用戶級庫管理，沒有內核的直接支持，而內核線程由操作系統內核管理和調度。硬件線程是並發實現的最低層次，由處理器本身提供，允許在硬件級別實現真正的並行。
+
+<h2 id="0.11">Stack frame（堆疊框架），Stack pointer（堆疊指標），和 Frame pointer（框架指標）</h2>
+
+Stack 繁中為堆疊、簡中為棧; Heap 繁中為堆積、簡中為堆
+
+Stack frame（堆疊框架），Stack pointer（堆疊指標），和 Frame pointer（框架指標）是在電腦程式的執行過程中，與函式呼叫和局部變數存儲相關的概念。它們之間有著密切的關聯。
+
+1. 堆疊框架（Stack frame）：
+
+    堆疊框架是一個資料結構，用於保存函式呼叫時所需的資訊。當一個函式被呼叫時，會在程式的執行堆疊（Stack）中為該函式創建一個新的堆疊框架。堆疊框架通常包含以下資訊：
+
+   - 函式的參數；
+   - 函式的局部變數；
+   - 返回地址，即函式執行完畢後需要返回到的程式位置。
+
+2. 堆疊指標（Stack pointer）：
+
+    堆疊指標是一個特殊的寄存器，用於追踪當前執行堆疊的頂部。當一個新的函式被呼叫時，堆疊指標會指向新建立的堆疊框架的頂部，並根據局部變數和參數的需求調整。當函式執行完畢，堆疊指標會恢復到呼叫前的位置，釋放相應的記憶體空間。
+
+3. 框架指標（Frame pointer）：
+
+    框架指標是另一個特殊的寄存器，用於定位當前函式的堆疊框架基址。在函式呼叫過程中，框架指標會被設置為當前堆疊指標的值，然後堆疊指標會根據需要進行調整。框架指標有助於函式訪問其參數和局部變數，並在函式返回時恢復堆疊指標的值。
+
+- 堆疊框架用於存儲函式呼叫時的資訊，堆疊指標追踪執行堆疊框架用於存儲函式呼叫時的資訊，堆疊指標追踪執行堆疊的頂部，而框架指標定位當前函式的堆疊框架基址。它們共同協作以支持函式呼叫、參數傳遞、局部變數存儲和返回地址跳轉等操作。在函式呼叫過程中，堆疊指標和框架指標的值會不斷更新，以確保程式正確執行。
+
+跳離函數的program counter存在哪裡?
+
+- 跳離函數的 program counter（程式計數器）值通常儲存在函數的堆疊框架（stack frame）中。當一個函數被呼叫時，呼叫指令的下一個指令地址（即返回地址）會被保存到呼叫函數的堆疊框架裡。這樣，當函數執行完畢後，系統可以從堆疊框架中恢復原本的 program counter 值，然後跳回到原來的程式位置繼續執行。這個返回地址就是跳離函數時的 program counter。
 
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
