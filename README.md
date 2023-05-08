@@ -18,6 +18,7 @@ If there is related infringement or violation of related regulations, please con
   - [CPU 調度器（CPU Scheduler）和調度器（Dispatcher）](#0.9)
   - [what is the differences between user thread, kernel thread, and hardware thread?](#0.10)
   - [Stack frame（堆疊框架），Stack pointer（堆疊指標），和 Frame pointer（框架指標）](#0.11)
+  - [保護共享數據：原子操作與同步機制在中斷與臨界區的應用](#0.12)
 - [清大資工 周志遠 - 作業系統](#1)
   - [Term Explaination](#1.0)
   - [Chapter0: Historical Prospective](#1.1)
@@ -986,6 +987,39 @@ Stack frame（堆疊框架），Stack pointer（堆疊指標），和 Frame poin
 跳離函數的program counter存在哪裡?
 
 - 跳離函數的 program counter（程式計數器）值通常儲存在函數的堆疊框架（stack frame）中。當一個函數被呼叫時，呼叫指令的下一個指令地址（即返回地址）會被保存到呼叫函數的堆疊框架裡。這樣，當函數執行完畢後，系統可以從堆疊框架中恢復原本的 program counter 值，然後跳回到原來的程式位置繼續執行。這個返回地址就是跳離函數時的 program counter。
+
+<h2 id="0.12">保護共享數據：原子操作與同步機制在中斷與臨界區的應用</h2>
+
+在多線程和多進程環境中，保護共享數據以防止競爭條件和數據不一致非常重要。為了實現這一目的，可以使用同步機制（如互斥鎖、信號量等）來實現對共享數據的安全訪問。然而，在涉及中斷處理程序時，可能需要採取其他策略來確保共享數據的安全。
+
+在處理中斷時，有兩種常用的策略來保護共享數據：
+
+1. 關閉中斷：在進入臨界區之前關閉中斷，然後在離開臨界區時重新啟用中斷。這樣可以確保在執行臨界區期間不會發生中斷。但是，關閉中斷可能會影響系統的實時性和響應性。
+
+    ```C
+    disable_interrupts();
+    // Critical section code
+    enable_interrupts();
+    ```
+
+2. 使用原子操作：原子操作是一組不可中斷的指令序列，在執行過程中不會被其他線程或中斷打斷。通過使用原子操作來更新共享數據，可以確保即使在中斷處理程序中，對共享數據的訪問也是原子的。原子操作的可用性和具體實現取決於硬件和編程語言。
+
+    ```C
+    #include <stdatomic.h>
+
+    // Shared data
+    atomic_int shared_data;
+
+    // In the main thread
+    int value = 42;
+    atomic_store(&shared_data, value); // Store the value atomically
+
+    // In the interrupt service routine
+    int new_value = 100;
+    atomic_store(&shared_data, new_value); // Store the new_value atomically
+    ```
+
+在選擇保護共享數據的策略時，需要權衡系統的實時性、響應性和性能需求。原子操作在某些特定場景中可以提供一種不依賴於同步原語的方法來保護共享數據，但在更複雜的場景中，可能仍然需要使用互斥鎖或其他同步機制來確保數據一致性和正確性。
 
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
