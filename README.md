@@ -19,6 +19,7 @@ If there is related infringement or violation of related regulations, please con
   - [what is the differences between user thread, kernel thread, and hardware thread?](#0.10)
   - [Stack frame（堆疊框架），Stack pointer（堆疊指標），和 Frame pointer（框架指標）](#0.11)
   - [保護共享數據：原子操作與同步機制在中斷與臨界區的應用](#0.12)
+  - [線程局部存儲（Thread-Local Storage，TLS）](#0.13)
 - [清大資工 周志遠 - 作業系統](#1)
   - [Term Explaination](#1.0)
   - [Chapter0: Historical Prospective](#1.1)
@@ -1020,6 +1021,50 @@ Stack frame（堆疊框架），Stack pointer（堆疊指標），和 Frame poin
     ```
 
 在選擇保護共享數據的策略時，需要權衡系統的實時性、響應性和性能需求。原子操作在某些特定場景中可以提供一種不依賴於同步原語的方法來保護共享數據，但在更複雜的場景中，可能仍然需要使用互斥鎖或其他同步機制來確保數據一致性和正確性。
+
+<h2 id="0.13">線程局部存儲（Thread-Local Storage，TLS）</h2>
+
+線程局部存儲（Thread-Local Storage，TLS）是一種編程概念和技術，用於在多線程程序中為每個線程提供獨立的存儲空間。 TLS允許每個線程擁有自己的變量副本，這些變量對其他線程是不可見的。
+
+在多線程編程中，全局變量通常是所有線程共享的，因此對全局變量的訪問可能導致競態條件和並發問題。 TLS提供了一種解決方案，使得每個線程都可以擁有自己的私有變量副本，從而避免了競態條件的問題。
+
+TLS的主要特點包括：
+
+1. 線程隔離性：每個線程都有自己獨立的變量副本，線程之間互不干擾。一個線程對自己的TLS變量的修改不會影響其他線程的副本。
+2. 存儲效率：TLS使用的存儲空間是在每個線程的線程控制塊（Thread Control Block，TCB）中分配的，因此訪問TLS變量的速度很快。
+3. 線程安全性：TLS變量在同一線程中是線程安全的，因為每個線程都有自己的副本，不會受到其他線程的干擾。
+
+範例
+
+```C
+#include <stdio.h>
+#include <pthread.h>
+
+__thread int tls_variable;  // 线程局部存储变量
+
+void* thread_function(void* arg) {
+    tls_variable = pthread_self();  // 在每个线程中设置线程ID到TLS变量
+    printf("Thread ID: %ld, TLS Variable: %d\n", pthread_self(), tls_variable);
+    return NULL;
+}
+
+int main() {
+    pthread_t thread1, thread2;
+    
+    pthread_create(&thread1, NULL, thread_function, NULL);
+    pthread_create(&thread2, NULL, thread_function, NULL);
+
+    pthread_join(thread1, NULL);
+    pthread_join(thread2, NULL);
+
+    return 0;
+}
+
+/**********************************
+Thread ID: 139808345227776, TLS Variable: 139808345227776
+Thread ID: 139808336835072, TLS Variable: 139808336835072
+***********************************/
+```
 
 <h1 id="1">清大資工 周志遠 - 作業系統</h1>
 
